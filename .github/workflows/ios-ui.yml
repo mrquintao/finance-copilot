@@ -13,6 +13,74 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Start mock backend
+        run: |
+          python3 -u - <<'PY' > mock-backend.log 2>&1 &
+          from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+          from pathlib import Path
+          from urllib.parse import urlparse
+
+          root = Path.cwd()
+
+          routes = {
+              "/analytics/spending-summary":
+                  root / "ios/FinanceCopilotTests/Fixtures/summary.json",
+
+              "/analytics/spending-by-category":
+                  root / "ios/FinanceCopilotTests/Fixtures/categories.json",
+          }
+
+          class Handler(BaseHTTPRequestHandler):
+              def do_GET(self):
+                  path = urlparse(self.path).path
+
+                  print(f"GET {path}", flush=True)
+
+                  if path == "/health":
+                      body = b'{"status":"ok"}'
+                      self.send_response(200)
+                      self.send_header("Content-Type", "application/json")
+                      self.send_header("Content-Length", str(len(body)))
+                      self.end_headers()
+                      self.wfile.write(body)
+                      return
+
+                  fixture = routes.get(path)
+
+                  if fixture and fixture.exists():
+                      body = fixture.read_bytes()
+
+                      self.send_response(200)
+                      self.send_header("Content-Type", "application/json")
+                      self.send_header("Content-Length", str(len(body)))
+                      self.end_headers()
+                      self.wfile.write(body)
+                      return
+
+                  body = b'{"detail":"Not Found"}'
+                  self.send_response(404)
+                  self.send_header("Content-Type", "application/json")
+                  self.send_header("Content-Length", str(len(body)))
+                  self.end_headers()
+                  self.wfile.write(body)
+
+              def log_message(self, format, *args):
+                  return
+
+          print("Mock backend running at http://localhost:8000", flush=True)
+
+          ThreadingHTTPServer(
+              ("0.0.0.0", 8000),
+              Handler
+          ).serve_forever()
+          PY
+
+          echo $! > mock-backend.pid
+
+          sleep 2
+
+          curl --fail http://localhost:8000/health
+
       - name: Show Xcode version
         run: xcodebuild -version
 
