@@ -9,8 +9,10 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     MetaData,
     String,
+    Text,
     UniqueConstraint,
     func,
 )
@@ -33,12 +35,19 @@ class Base(DeclarativeBase):
 
 class Account(Base):
     __tablename__ = "accounts"
-    __table_args__ = (CheckConstraint("currency = 'BRL'", name="currency_brl"),)
+    __table_args__ = (
+        CheckConstraint("currency = 'BRL'", name="currency_brl"),
+        UniqueConstraint("provider", "provider_account_id"),
+        Index("ix_accounts_provider_item_id", "provider", "provider_item_id"),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(100))
     institution: Mapped[str] = mapped_column(String(100))
     currency: Mapped[str] = mapped_column(String(3), default="BRL")
+    provider: Mapped[str | None] = mapped_column(String(40))
+    provider_item_id: Mapped[str | None] = mapped_column(String(100))
+    provider_account_id: Mapped[str | None] = mapped_column(String(100))
 
 
 class Category(Base):
@@ -79,3 +88,25 @@ class Transaction(Base):
     )
     account: Mapped[Account] = relationship()
     category: Mapped[Category | None] = relationship()
+
+
+class SyncRun(Base):
+    __tablename__ = "sync_runs"
+    __table_args__ = (
+        CheckConstraint("status IN ('running', 'succeeded', 'failed')", name="status_valid"),
+        Index("ix_sync_runs_started_at", "started_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    provider: Mapped[str] = mapped_column(String(40))
+    item_id: Mapped[str] = mapped_column(String(100))
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(16), default="running")
+    accounts_received: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    transactions_received: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    transactions_created: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    transactions_updated: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    error: Mapped[str | None] = mapped_column(Text)

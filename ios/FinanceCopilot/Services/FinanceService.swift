@@ -1,7 +1,23 @@
 import Foundation
 
+struct SyncRun: Decodable, Sendable {
+    let id: UUID
+    let status: String
+    let transactionsCreated: Int
+    let transactionsUpdated: Int
+    let error: String?
+}
+
+struct SyncRuns: Decodable, Sendable {
+    let items: [SyncRun]
+}
+
 struct FinanceService: Sendable {
     let client: APIClient
+
+    var connectURL: URL {
+        client.baseURL.appendingPathComponent("sync/connect")
+    }
 
     func summary(for period: Period) async throws -> SpendingSummary {
         guard period.isValid else { throw APIError.invalidPeriod }
@@ -23,5 +39,9 @@ struct FinanceService: Sendable {
 
     func transaction(id: UUID) async throws -> Transaction {
         try await client.get("transactions/\(id.uuidString)")
+    }
+
+    func refreshOpenFinance() async throws -> SyncRuns {
+        try await client.post("sync/refresh")
     }
 }
