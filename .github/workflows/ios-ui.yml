@@ -1,0 +1,96 @@
+name: iOS UI Screenshot
+
+on:
+  workflow_dispatch:
+
+jobs:
+  screenshot:
+    name: Capture iOS UI
+    runs-on: macos-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Select iPhone Simulator
+        run: |
+          SIMULATOR_ID=$(xcrun simctl list devices available |
+            grep -m 1 "iPhone" |
+            sed -E 's/.*\(([0-9A-Fa-f-]{36})\).*/\1/')
+
+          if [ -z "$SIMULATOR_ID" ]; then
+            echo "No available iPhone simulator found."
+            exit 1
+          fi
+
+          echo "SIMULATOR_ID=$SIMULATOR_ID" >> "$GITHUB_ENV"
+          echo "Selected simulator: $SIMULATOR_ID"
+
+      - name: Boot simulator
+        run: |
+          xcrun simctl boot "$SIMULATOR_ID" || true
+          xcrun simctl bootstatus "$SIMULATOR_ID" -b
+
+      - name: Build Finance Copilot
+        run: |
+          xcodebuild \
+            -project ios/FinanceCopilot.xcodeproj \
+            -scheme FinanceCopilot \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -derivedDataPath "$PWD/build" \
+            CODE_SIGNING_ALLOWED=NO \
+            clean build
+
+      - name: Find app
+        run: |
+          APP_PATH="$PWD/build/Build/Products/Debug-iphonesimulator/FinanceCopilot.app"
+
+          if [ ! -d "$APP_PATH" ]; then
+            echo "FinanceCopilot.app not found."
+            exit 1
+          fi
+
+          echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
+
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy \
+            -c "Print :CFBundleIdentifier" \
+            "$APP_PATH/Info.plist")
+
+          echo "BUNDLE_ID=$BUNDLE_ID" >> "$GITHUB_ENV"
+
+          echo "App: $APP_PATH"
+          echo "Bundle ID: $BUNDLE_ID"
+
+      - name: Install app
+        run: |
+          xcrun simctl install "$SIMULATOR_ID" "$APP_PATH"
+
+      - name: Launch app
+        run: |
+          xcrun simctl launch "$SIMULATOR_ID" "$BUNDLE_ID"
+
+          # Aguarda a interface terminar de abrir
+          sleep 8
+
+      - name: Capture screenshot
+        run: |
+          mkdir -p screenshots
+
+          xcrun simctl io \
+            "$SIMULATOR_ID" \
+            screenshot screenshots/finance-copilot.png
+
+          ls -lh screenshots/
+
+      - name: Upload screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: finance-copilot-ui
+          path: screenshots/finance-copilot.png
+          retention-days: 7
