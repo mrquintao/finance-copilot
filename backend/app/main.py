@@ -15,6 +15,7 @@ from app.analytics.router import router as analytics_router
 from app.categories.router import router as categories_router
 from app.core.config import database_url
 from app.db.session import SessionDep, make_engine
+from app.sync.router import router as sync_router
 from app.transactions.router import router as transactions_router
 
 logger = logging.getLogger("finance_copilot")
@@ -36,13 +37,15 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="Finance Copilot",
-        version="0.1.0",
+        version="0.2.0",
         lifespan=lifespan,
         description=(
-            "Local single-person demo with fake BRL data. Money is serialized as decimal "
-            "strings. Amounts are nonnegative; debit = expense, credit = income, transfer = "
-            "internal movement excluded from spending/income. Date bounds are inclusive; "
-            "omitted bounds are open. No authentication: use only on a trusted local network."
+            "Personal finance API with PostgreSQL analytics and optional Pluggy Open Finance "
+            "synchronization. Money is serialized as decimal strings. Amounts are nonnegative; "
+            "debit = expense, credit = income, transfer = internal movement excluded from "
+            "spending/income. Date bounds are inclusive. Provider credentials remain server-side. "
+            "The API is still single-person and unauthenticated; keep it on loopback/trusted dev "
+            "networks only."
         ),
     )
 
@@ -84,6 +87,7 @@ def create_app() -> FastAPI:
     app.include_router(transactions_router)
     app.include_router(analytics_router)
     app.include_router(categories_router)
+    app.include_router(sync_router)
     return app
 
 
