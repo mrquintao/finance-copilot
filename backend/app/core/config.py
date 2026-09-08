@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from sqlalchemy.engine import URL, make_url
@@ -40,9 +41,11 @@ def pluggy_settings() -> PluggySettings:
     base_url = os.getenv("PLUGGY_BASE_URL", "https://api.pluggy.ai").strip().rstrip("/")
     if not client_id or not client_secret:
         raise RuntimeError("Set PLUGGY_CLIENT_ID and PLUGGY_CLIENT_SECRET; see .env.example.")
-    if not base_url.startswith("https://") and base_url not in {
-        "http://127.0.0.1",
-        "http://localhost",
-    }:
+
+    parsed = urlparse(base_url)
+    https = parsed.scheme == "https" and bool(parsed.netloc)
+    loopback_http = parsed.scheme == "http" and parsed.hostname in {"127.0.0.1", "localhost"}
+    if not (https or loopback_http) or parsed.username or parsed.password:
         raise RuntimeError("PLUGGY_BASE_URL must use HTTPS outside loopback development.")
+
     return PluggySettings(client_id=client_id, client_secret=client_secret, base_url=base_url)
