@@ -12,12 +12,9 @@ import httpx
 from app.integrations.open_finance.provider import (
     FinancialDataProvider,
     ProviderAccount,
+    ProviderError,
     ProviderTransaction,
 )
-
-
-class ProviderError(RuntimeError):
-    """Safe integration error; never includes credentials or response bodies."""
 
 
 class PluggyProvider(FinancialDataProvider):
