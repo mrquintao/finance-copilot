@@ -6,6 +6,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 from urllib.parse import parse_qs, urlparse
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -15,6 +16,8 @@ from app.integrations.open_finance.provider import (
     ProviderError,
     ProviderTransaction,
 )
+
+BRAZIL_TZ = ZoneInfo("America/Sao_Paulo")
 
 
 class PluggyProvider(FinancialDataProvider):
@@ -41,6 +44,8 @@ class PluggyProvider(FinancialDataProvider):
         if item_id:
             body["itemId"] = item_id
         payload = await self._request_json("POST", "/connect_token", json_body=body)
+        if not isinstance(payload, dict):
+            raise ProviderError("Provider returned an invalid connect token response.")
         token = payload.get("connectToken") or payload.get("accessToken")
         if not isinstance(token, str) or not token:
             raise ProviderError("Provider returned an invalid connect token.")
@@ -48,9 +53,17 @@ class PluggyProvider(FinancialDataProvider):
 
     async def get_accounts(self, *, item_id: str) -> list[ProviderAccount]:
         item = await self._request_json("GET", f"/items/{item_id}")
+        if not isinstance(item, dict):
+            raise ProviderError("Provider returned an invalid item response.")
         institution = self._institution_name(item)
+
         payload = await self._request_json("GET", "/accounts", params={"itemId": item_id})
-        rows = payload.get("results", payload if isinstance(payload, list) else [])
+        if isinstance(payload, dict):
+            rows = payload.get("results", [])
+        elif isinstance(payload, list):
+            rows = payload
+        else:
+            rows = []
         if not isinstance(rows, list):
             raise ProviderError("Provider returned an invalid accounts response.")
 
@@ -58,14 +71,18 @@ class PluggyProvider(FinancialDataProvider):
         for row in rows:
             if not isinstance(row, dict):
                 continue
-            external_id = row.get("id")
+            source_id = row.get("id")
+            stable_id = row.get("providerId") or source_id
             currency = row.get("currencyCode")
-            if not isinstance(external_id, str) or not isinstance(currency, str):
+            if not isinstance(source_id, str) or not isinstance(stable_id, str):
+                continue
+            if not isinstance(currency, str):
                 continue
             name = row.get("marketingName") or row.get("name") or "Conta"
             accounts.append(
                 ProviderAccount(
-                    external_id=external_id,
+                    external_id=stable_id[:100],
+                    source_id=source_id[:100],
                     item_id=item_id,
                     name=str(name)[:100],
                     institution=institution[:100],
@@ -90,6 +107,8 @@ class PluggyProvider(FinancialDataProvider):
         transactions: list[ProviderTransaction] = []
         while True:
             payload = await self._request_json("GET", "/v2/transactions", params=params)
+            if not isinstance(payload, dict):
+                raise ProviderError("Provider returned an invalid transactions response.")
             rows = payload.get("results")
             if not isinstance(rows, list):
                 raise ProviderError("Provider returned an invalid transactions response.")
@@ -118,6 +137,8 @@ class PluggyProvider(FinancialDataProvider):
             json_body={"clientId": self._client_id, "clientSecret": self._client_secret},
             authenticated=False,
         )
+        if not isinstance(payload, dict):
+            raise ProviderError("Provider authentication returned an invalid response.")
         key = payload.get("apiKey") or payload.get("accessToken")
         if not isinstance(key, str) or not key:
             raise ProviderError("Provider authentication returned an invalid response.")
@@ -133,11 +154,10 @@ class PluggyProvider(FinancialDataProvider):
         json_body: dict[str, Any] | None = None,
         authenticated: bool = True,
     ) -> Any:
-        headers = {"Accept": "application/json", "Content-Type": "application/json"}
-        if authenticated:
-            headers["X-API-KEY"] = await self._api_key_value()
-
         for attempt in range(3):
+            headers = {"Accept": "application/json", "Content-Type": "application/json"}
+            if authenticated:
+                headers["X-API-KEY"] = await self._api_key_value()
             try:
                 async with httpx.AsyncClient(timeout=self._timeout) as client:
                     response = await client.request(
@@ -153,6 +173,10 @@ class PluggyProvider(FinancialDataProvider):
                 await asyncio.sleep(0.5 * (2**attempt))
                 continue
 
+            if response.status_code == 401 and authenticated and attempt < 2:
+                self._api_key = None
+                await asyncio.sleep(0.25)
+                continue
             if response.status_code in {429, 500, 502, 503, 504} and attempt < 2:
                 await asyncio.sleep(0.5 * (2**attempt))
                 continue
@@ -199,6 +223,10 @@ class PluggyProvider(FinancialDataProvider):
             posted_at = datetime.fromisoformat(str(raw_date).replace("Z", "+00:00"))
         except ValueError as exc:
             raise ProviderError("Provider returned an invalid transaction date.") from exc
+        if posted_at.tzinfo is not None:
+            transaction_date = posted_at.astimezone(BRAZIL_TZ).date()
+        else:
+            transaction_date = posted_at.date()
 
         merchant_value = row.get("merchant")
         if isinstance(merchant_value, dict):
@@ -213,7 +241,7 @@ class PluggyProvider(FinancialDataProvider):
         return ProviderTransaction(
             external_id=str(external_id)[:150],
             account_external_id=account_id,
-            date=posted_at.date(),
+            date=transaction_date,
             description=str(description)[:300],
             merchant=str(merchant)[:150] if merchant else None,
             amount=amount,
