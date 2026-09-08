@@ -1,0 +1,204 @@
+from __future__ import annotations
+
+from datetime import UTC, date, datetime
+from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import Session
+
+from app.db.models import Account, Category, SyncRun, Transaction
+from app.integrations.open_finance.provider import FinancialDataProvider, ProviderTransaction
+
+
+CATEGORY_RULES: tuple[tuple[tuple[str, ...], str], ...] = (
+    (("restaurant", "food", "meal", "delivery"), "Alimentação"),
+    (("grocery", "supermarket", "market"), "Mercado"),
+    (("transport", "taxi", "ride", "fuel", "gas"), "Transporte"),
+    (("health", "medical", "pharmacy", "drugstore"), "Saúde"),
+    (("subscription", "streaming", "software"), "Assinaturas"),
+    (("entertainment", "leisure", "travel"), "Lazer"),
+    (("housing", "rent", "utilities", "home"), "Moradia"),
+    (("shopping", "clothing", "electronics"), "Compras"),
+    (("salary", "income", "wage"), "Receita"),
+)
+
+
+class SyncService:
+    def __init__(self, provider: FinancialDataProvider) -> None:
+        self.provider = provider
+
+    async def synchronize(
+        self,
+        session: Session,
+        *,
+        item_id: str,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> SyncRun:
+        run = SyncRun(provider=self.provider.name, item_id=item_id, status="running")
+        session.add(run)
+        session.commit()
+        session.refresh(run)
+
+        try:
+            accounts = await self.provider.get_accounts(item_id=item_id)
+            run.accounts_received = len(accounts)
+
+            account_by_external_id: dict[str, Account] = {}
+            for provider_account in accounts:
+                if provider_account.currency != "BRL":
+                    continue
+                account = self._upsert_account(session, provider_account)
+                account_by_external_id[provider_account.external_id] = account
+
+            received = 0
+            created = 0
+            updated = 0
+            for external_account_id, account in account_by_external_id.items():
+                transactions = await self.provider.get_transactions(
+                    account_id=external_account_id,
+                    start_date=start_date,
+                    end_date=end_date,
+                )
+                received += len(transactions)
+                existing_ids = set(
+                    session.scalars(
+                        select(Transaction.external_id).where(
+                            Transaction.account_id == account.id,
+                            Transaction.external_id.in_(
+                                [transaction.external_id for transaction in transactions]
+                            ),
+                        )
+                    )
+                )
+                for transaction in transactions:
+                    category = self._category_for(session, transaction)
+                    self._upsert_transaction(session, account, transaction, category)
+                    if transaction.external_id in existing_ids:
+                        updated += 1
+                    else:
+                        created += 1
+
+            run.transactions_received = received
+            run.transactions_created = created
+            run.transactions_updated = updated
+            run.status = "succeeded"
+            run.finished_at = datetime.now(UTC)
+            run.error = None
+            session.commit()
+            session.refresh(run)
+            return run
+        except Exception as exc:
+            session.rollback()
+            failed = session.get(SyncRun, run.id)
+            if failed is None:
+                failed = SyncRun(id=run.id, provider=self.provider.name, item_id=item_id)
+                session.add(failed)
+            failed.status = "failed"
+            failed.finished_at = datetime.now(UTC)
+            failed.error = self._safe_error(exc)
+            session.commit()
+            raise
+
+    def _upsert_account(self, session: Session, provider_account) -> Account:
+        statement = (
+            insert(Account)
+            .values(
+                name=provider_account.name,
+                institution=provider_account.institution,
+                currency=provider_account.currency,
+                provider=self.provider.name,
+                provider_item_id=provider_account.item_id,
+                provider_account_id=provider_account.external_id,
+            )
+            .on_conflict_do_update(
+                constraint="uq_accounts_provider",
+                set_={
+                    "name": provider_account.name,
+                    "institution": provider_account.institution,
+                    "currency": provider_account.currency,
+                    "provider_item_id": provider_account.item_id,
+                },
+            )
+            .returning(Account.id)
+        )
+        account_id = session.scalar(statement)
+        if account_id is None:
+            raise RuntimeError("Could not persist provider account.")
+        account = session.get(Account, account_id)
+        if account is None:
+            raise RuntimeError("Could not load provider account.")
+        return account
+
+    def _upsert_transaction(
+        self,
+        session: Session,
+        account: Account,
+        transaction: ProviderTransaction,
+        category: Category | None,
+    ) -> None:
+        statement = insert(Transaction).values(
+            external_id=transaction.external_id,
+            account_id=account.id,
+            date=transaction.date,
+            description=transaction.description,
+            merchant=transaction.merchant,
+            amount=transaction.amount,
+            currency=transaction.currency,
+            type=transaction.type,
+            category_id=category.id if category else None,
+            subcategory=transaction.subcategory or transaction.category,
+            is_recurring=False,
+        )
+        session.execute(
+            statement.on_conflict_do_update(
+                constraint="uq_transactions_account_id",
+                set_={
+                    "date": transaction.date,
+                    "description": transaction.description,
+                    "merchant": transaction.merchant,
+                    "amount": transaction.amount,
+                    "currency": transaction.currency,
+                    "type": transaction.type,
+                    "category_id": category.id if category else None,
+                    "subcategory": transaction.subcategory or transaction.category,
+                    "updated_at": datetime.now(UTC),
+                },
+            )
+        )
+
+    def _category_for(self, session: Session, transaction: ProviderTransaction) -> Category | None:
+        normalized = self._internal_category(transaction)
+        if normalized is None:
+            return None
+        category = session.scalar(select(Category).where(Category.name == normalized))
+        if category is not None:
+            return category
+        category = Category(name=normalized)
+        session.add(category)
+        session.flush()
+        return category
+
+    @staticmethod
+    def _internal_category(transaction: ProviderTransaction) -> str | None:
+        if transaction.type == "credit" and not transaction.category:
+            return "Receita"
+        text = " ".join(
+            part.lower()
+            for part in (transaction.category, transaction.description, transaction.merchant)
+            if part
+        )
+        if not text:
+            return None
+        for keywords, category in CATEGORY_RULES:
+            if any(keyword in text for keyword in keywords):
+                return category
+        return "Outros"
+
+    @staticmethod
+    def _safe_error(exc: Exception) -> str:
+        message = str(exc).strip()
+        if not message:
+            return type(exc).__name__
+        return message[:500]
