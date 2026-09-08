@@ -17,6 +17,7 @@ class ProviderError(RuntimeError):
 @dataclass(frozen=True, slots=True)
 class ProviderAccount:
     external_id: str
+    source_id: str
     item_id: str
     name: str
     institution: str
