@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 
 from app.core.config import pluggy_settings
-from app.db.models import Account, SyncRun
+from app.db.models import SyncRun
 from app.db.session import SessionDep
 from app.integrations.open_finance.pluggy import PluggyProvider
 from app.integrations.open_finance.provider import ProviderError
@@ -124,16 +124,14 @@ async def synchronize(payload: SyncRequest, session: SessionDep) -> SyncRunRead:
 async def refresh_connected_accounts(session: SessionDep) -> SyncList:
     item_ids = list(
         session.scalars(
-            select(Account.provider_item_id)
-            .where(Account.provider == "pluggy", Account.provider_item_id.is_not(None))
+            select(SyncRun.item_id)
+            .where(SyncRun.provider == "pluggy")
             .distinct()
         )
     )
     runs: list[SyncRunRead] = []
     service = SyncService(provider())
     for item_id in item_ids:
-        if item_id is None:
-            continue
         try:
             run = await service.synchronize(session, item_id=item_id)
         except ProviderError as exc:
