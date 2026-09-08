@@ -13,17 +13,16 @@ from app.integrations.open_finance.provider import (
     ProviderTransaction,
 )
 
-
 CATEGORY_RULES: tuple[tuple[tuple[str, ...], str], ...] = (
-    (("restaurant", "food", "meal", "delivery"), "Alimentação"),
-    (("grocery", "supermarket", "market"), "Mercado"),
-    (("transport", "taxi", "ride", "fuel", "gas"), "Transporte"),
-    (("health", "medical", "pharmacy", "drugstore"), "Saúde"),
-    (("subscription", "streaming", "software"), "Assinaturas"),
-    (("entertainment", "leisure", "travel"), "Lazer"),
-    (("housing", "rent", "utilities", "home"), "Moradia"),
-    (("shopping", "clothing", "electronics"), "Compras"),
-    (("salary", "income", "wage"), "Receita"),
+    (("restaurant", "restaurante", "food", "alimentação", "meal", "delivery"), "Alimentação"),
+    (("grocery", "supermarket", "supermercado", "market", "mercado"), "Mercado"),
+    (("transport", "transporte", "taxi", "ride", "fuel", "gas", "combustível"), "Transporte"),
+    (("health", "saúde", "medical", "pharmacy", "farmácia", "drugstore"), "Saúde"),
+    (("subscription", "assinatura", "streaming", "software"), "Assinaturas"),
+    (("entertainment", "leisure", "lazer", "travel", "viagem"), "Lazer"),
+    (("housing", "moradia", "rent", "aluguel", "utilities", "energia", "home"), "Moradia"),
+    (("shopping", "compras", "clothing", "electronics"), "Compras"),
+    (("salary", "salário", "income", "receita", "wage"), "Receita"),
 )
 
 
@@ -47,22 +46,18 @@ class SyncService:
         try:
             accounts = await self.provider.get_accounts(item_id=item_id)
             run.accounts_received = len(accounts)
-
-            account_by_external_id: dict[str, Account] = {}
+            account_by_source_id: dict[str, Account] = {}
             for provider_account in accounts:
                 if provider_account.currency != "BRL":
                     continue
-                account = self._upsert_account(session, provider_account)
-                account_by_external_id[provider_account.external_id] = account
+                account_by_source_id[provider_account.source_id] = self._upsert_account(
+                    session, provider_account
+                )
 
-            received = 0
-            created = 0
-            updated = 0
-            for external_account_id, account in account_by_external_id.items():
+            received = created = updated = 0
+            for source_id, account in account_by_source_id.items():
                 transactions = await self.provider.get_transactions(
-                    account_id=external_account_id,
-                    start_date=start_date,
-                    end_date=end_date,
+                    account_id=source_id, start_date=start_date, end_date=end_date
                 )
                 received += len(transactions)
                 transaction_ids = [transaction.external_id for transaction in transactions]
@@ -130,11 +125,9 @@ class SyncService:
             .returning(Account.id)
         )
         account_id = session.scalar(statement)
-        if account_id is None:
-            raise RuntimeError("Could not persist provider account.")
-        account = session.get(Account, account_id)
+        account = session.get(Account, account_id) if account_id else None
         if account is None:
-            raise RuntimeError("Could not load provider account.")
+            raise RuntimeError("Could not persist provider account.")
         return account
 
     def _upsert_transaction(
@@ -179,11 +172,10 @@ class SyncService:
         if normalized is None:
             return None
         category = session.scalar(select(Category).where(Category.name == normalized))
-        if category is not None:
-            return category
-        category = Category(name=normalized)
-        session.add(category)
-        session.flush()
+        if category is None:
+            category = Category(name=normalized)
+            session.add(category)
+            session.flush()
         return category
 
     @staticmethod
