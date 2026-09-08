@@ -49,12 +49,25 @@ struct APIClient: Sendable {
     func get<T: Decodable & Sendable>(
         _ path: String, query: [URLQueryItem] = []
     ) async throws -> T {
+        try await request(path, method: "GET", query: query)
+    }
+
+    func post<T: Decodable & Sendable>(_ path: String) async throws -> T {
+        try await request(path, method: "POST")
+    }
+
+    private func request<T: Decodable & Sendable>(
+        _ path: String,
+        method: String,
+        query: [URLQueryItem] = []
+    ) async throws -> T {
         guard var components = URLComponents(
             url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false
         ) else { throw APIError.configuration }
         if !query.isEmpty { components.queryItems = query }
         guard let url = components.url else { throw APIError.configuration }
         var request = URLRequest(url: url)
+        request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
         let (data, response) = try await session.data(for: request)
