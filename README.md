@@ -1,983 +1,168 @@
 # Finance Copilot
 
-Aplicativo pessoal de finanças para iPhone que consolida transações, categoriza gastos, gera análises e permite conversar com um assistente baseado em LLM sobre o próprio histórico financeiro.
+Aplicativo pessoal de finanças para iPhone. O **MVP 0.1** permite consultar transações fictícias em BRL, filtrar períodos e visualizar gastos por categoria com um backend real e PostgreSQL.
 
-> Status: **em planejamento / MVP**
->
-> Escopo inicial: **uso pessoal**.
+O [documento original de visão e roadmap](docs/vision.md) foi preservado. Open Finance, sincronização, chat/LLM, insights e analytics avançados continuam fora deste MVP. A especificação da implementação está em [mvp-prompt.txt](mvp-prompt.txt).
 
----
-
-## Visão
-
-O Finance Copilot tem como objetivo responder, de forma simples, perguntas como:
-
-- Quanto gastei este mês?
-- Em quais categorias estou gastando mais?
-- Quais despesas aumentaram em relação aos meses anteriores?
-- Quais pagamentos parecem recorrentes?
-- Quanto gastei em um determinado estabelecimento?
-- Como meus gastos mudaram ao longo do tempo?
-- Existem padrões ou anomalias relevantes no meu comportamento financeiro?
-
-A aplicação será dividida em três camadas principais:
-
-1. **Dados financeiros** — ingestão e normalização de transações.
-2. **Analytics** — cálculos determinísticos sobre o histórico financeiro.
-3. **Assistente com LLM** — interface conversacional sobre os dados e análises existentes.
-
-O LLM não será a fonte de verdade para cálculos financeiros. Operações como soma, comparação de períodos, agrupamentos e métricas serão executadas pelo backend.
-
----
-
-## Objetivos
-
-### Objetivos do projeto
-
-- Consolidar transações financeiras em uma base única.
-- Permitir categorização e normalização de gastos.
-- Visualizar gastos por período, categoria e estabelecimento.
-- Identificar despesas recorrentes.
-- Comparar comportamento financeiro entre períodos.
-- Integrar dados via Open Finance.
-- Disponibilizar uma interface conversacional baseada em LLM.
-- Manter dados e credenciais sensíveis fora do aplicativo iOS.
-- Construir uma arquitetura simples, modular e evolutiva.
-
-### Fora do escopo inicial
-
-- Plataforma multiusuário.
-- Recomendação de investimentos.
-- Compra ou venda de ativos.
-- Execução de pagamentos.
-- Microservices.
-- Kubernetes.
-- Fine-tuning de modelos.
-- Vector database para histórico de transações.
-- Event sourcing / CQRS.
-- Integração com múltiplos provedores Open Finance no MVP.
-
----
-
-# Roadmap
-
-## MVP 0.1 — Core financeiro com dados locais
-
-Objetivo:
-
-> Abrir o aplicativo no iPhone e visualizar gastos por categoria e período usando transações fake ou importadas por CSV.
-
-### Entregas
-
-- [ ] Backend FastAPI.
-- [ ] PostgreSQL local.
-- [ ] Modelo de transações.
-- [ ] Dataset fake / importação CSV.
-- [ ] API de transações.
-- [ ] Gastos agregados por categoria.
-- [ ] Gastos agregados por mês.
-- [ ] Aplicativo SwiftUI.
-- [ ] Dashboard inicial.
-- [ ] Lista de transações.
-- [ ] Filtro por período.
-
----
-
-## MVP 0.2 — Open Finance
-
-Objetivo:
-
-> Substituir a origem local por sincronização automática de dados financeiros.
-
-### Entregas
-
-- [ ] Criar abstração `FinancialDataProvider`.
-- [ ] Implementar adapter do provedor Open Finance.
-- [ ] Importar contas.
-- [ ] Importar transações.
-- [ ] Normalizar dados recebidos.
-- [ ] Deduplicar transações.
-- [ ] Registrar histórico de sincronizações.
-- [ ] Tratar erros e retries de integração.
-
----
-
-## MVP 0.3 — Analytics
-
-Objetivo:
-
-> Gerar insights úteis sem depender de LLM.
-
-### Entregas
-
-- [ ] Gastos por categoria.
-- [ ] Gastos por estabelecimento.
-- [ ] Comparação entre períodos.
-- [ ] Fluxo de caixa mensal.
-- [ ] Identificação de despesas recorrentes.
-- [ ] Maiores transações do período.
-- [ ] Tendência de gastos.
-- [ ] Detecção básica de anomalias.
-
----
-
-## MVP 0.4 — AI Assistant
-
-Objetivo:
-
-> Permitir consultas em linguagem natural sobre os próprios dados financeiros.
-
-### Exemplos
-
-- "Quanto gastei com restaurantes nos últimos 3 meses?"
-- "Quais categorias mais aumentaram este mês?"
-- "Quanto gasto por mês com assinaturas?"
-- "Quais foram minhas maiores compras em agosto?"
-- "Compare meus gastos deste mês com a média dos últimos 6 meses."
-
-### Entregas
-
-- [ ] Endpoint de chat.
-- [ ] Integração com LLM via API.
-- [ ] Tool calling.
-- [ ] Ferramentas de analytics para o LLM.
-- [ ] Histórico de conversa.
-- [ ] Controles de privacidade.
-- [ ] Respostas explicáveis e baseadas em dados retornados pelas tools.
-
----
-
-## MVP 0.5 — Insights proativos
-
-Possíveis exemplos:
-
-> Seus gastos com restaurantes estão 28% acima da média dos últimos seis meses.
-
-> Você possui aproximadamente R$ 420/mês em despesas recorrentes.
-
-> Seus gastos com transporte aumentaram por três meses consecutivos.
-
----
-
-# Arquitetura
-
-A aplicação seguirá inicialmente um modelo de **monólito modular**.
+## Arquitetura e escopo implementado
 
 ```text
-                         ┌──────────────────┐
-                         │      iPhone      │
-                         │ SwiftUI + Charts │
-                         └────────┬─────────┘
-                                  │
-                                HTTPS
-                                  │
-                         ┌────────▼─────────┐
-                         │     FastAPI      │
-                         │                  │
-                         │ transactions     │
-                         │ analytics        │
-                         │ categories       │
-                         │ sync             │
-                         │ ai               │
-                         └────────┬─────────┘
-                                  │
-                    ┌─────────────┼─────────────┐
-                    │             │             │
-                    ▼             ▼             ▼
-               PostgreSQL    Open Finance     LLM API
-                                Provider
+iPhone: SwiftUI + Swift Charts + URLSession
+                    |
+                 REST/JSON
+                    |
+FastAPI: transactions / categories / analytics
+                    |
+          SQLAlchemy + PostgreSQL
+               Alembic migrations
 ```
 
-## Princípios
-
-- O iPhone nunca acessa diretamente o banco de dados.
-- O iPhone nunca armazena secrets do provedor Open Finance.
-- O iPhone nunca armazena a API key do LLM.
-- O backend é responsável por autenticação, regras de negócio e analytics.
-- O banco de dados é a fonte de verdade para transações normalizadas.
-- O LLM acessa dados através de tools controladas pelo backend.
-- Cálculos financeiros devem ser determinísticos e testáveis.
-
----
-
-# Stack
-
-## iOS
-
-- Swift
-- SwiftUI
-- Swift Charts
-- URLSession
-- Keychain
-- Swift Testing / XCTest
-
-## Backend
-
-- Python
-- FastAPI
-- Pydantic
-- SQLAlchemy
-- Alembic
-- httpx
-- pytest
-
-## Banco
-
-- PostgreSQL
-
-## AI
-
-- LLM via API
-- Function / Tool Calling
-
-## Infra
-
-- Docker
-- Docker Compose para desenvolvimento
-- GitHub Actions
-- PostgreSQL gerenciado em produção
-- Container hosting para o backend
-
----
-
-# Estrutura do repositório
-
-O projeto começa como monorepo.
+Monólito modular, uso pessoal, API somente de leitura e dataset determinístico. São **126 transações de abril a setembro de 2026**, com salário, mercado, transporte, assinaturas, moradia, transferências e despesas sem categoria. O aplicativo abre em setembro de 2026 para mostrar dados mesmo quando o mês atual estiver fora do dataset.
 
 ```text
-finance-copilot/
-│
-├── backend/
-│   ├── app/
-│   │   ├── api/
-│   │   ├── domain/
-│   │   ├── models/
-│   │   ├── schemas/
-│   │   ├── repositories/
-│   │   ├── services/
-│   │   ├── analytics/
-│   │   ├── integrations/
-│   │   │   ├── open_finance/
-│   │   │   └── llm/
-│   │   └── main.py
-│   │
-│   ├── tests/
-│   ├── alembic/
-│   ├── pyproject.toml
-│   └── Dockerfile
-│
-├── ios/
-│   └── FinanceCopilot/
-│       ├── App/
-│       ├── Models/
-│       ├── Views/
-│       │   ├── Dashboard/
-│       │   ├── Transactions/
-│       │   ├── Analytics/
-│       │   └── Chat/
-│       ├── ViewModels/
-│       ├── Services/
-│       ├── Networking/
-│       └── Components/
-│
-├── data/
-│   └── samples/
-│
-├── docs/
-│   └── adr/
-│
-├── .github/
-│   └── workflows/
-│
-├── docker-compose.yml
-├── .env.example
-├── .gitignore
-└── README.md
+backend/app/                 API, modelos, cálculos e seed
+backend/alembic/             Migration inicial reversível
+backend/tests/               Testes reais com PostgreSQL
+ios/FinanceCopilot.xcodeproj Projeto Xcode e scheme compartilhado
+ios/FinanceCopilot/          Models, Networking, Services, ViewModels, Views
+ios/FinanceCopilotTests/     XCTest e fixtures reais da API fictícia
+scripts/dev.py              Comandos de desenvolvimento
+compose.yaml                PostgreSQL, migration e backend
 ```
-
----
-
-# Domínio
-
-## Transaction
-
-Campos mínimos planejados:
-
-```text
-id
-external_id
-account_id
-
-date
-description
-merchant
-
-amount
-currency
-type
-
-category
-subcategory
-
-is_recurring
-
-created_at
-updated_at
-```
-
-### Exemplo
-
-```json
-{
-  "id": "tx_123",
-  "external_id": "provider_456",
-  "account_id": "acc_001",
-  "date": "2026-09-07",
-  "description": "UBER *TRIP",
-  "merchant": "Uber",
-  "amount": "37.90",
-  "currency": "BRL",
-  "type": "debit",
-  "category": "transport",
-  "subcategory": "ride_hailing",
-  "is_recurring": false
-}
-```
-
-> Valores monetários devem usar `Decimal` no backend e `NUMERIC` no PostgreSQL. Evitar `float` para dinheiro.
-
----
-
-# Modelo de dados inicial
-
-```text
-User
- │
- ├── Account
- │     │
- │     └── Transaction
- │
- ├── Merchant
- │
- ├── Category
- │
- └── SyncRun
-```
-
-Tabelas iniciais:
-
-```text
-users
-accounts
-transactions
-merchants
-categories
-sync_runs
-```
-
-Tabelas futuras:
-
-```text
-recurring_transactions
-budgets
-financial_insights
-chat_sessions
-chat_messages
-```
-
----
-
-# API
-
-Endpoints iniciais planejados:
-
-```http
-GET /health
-
-GET /transactions
-GET /transactions/{id}
-
-GET /analytics/summary
-GET /analytics/spending-by-category
-GET /analytics/spending-by-merchant
-GET /analytics/monthly
-GET /analytics/compare-periods
-
-POST /sync
-GET  /sync/runs
-```
-
-Futuramente:
-
-```http
-POST /chat
-```
-
----
-
-# Analytics
-
-O backend deverá ser capaz de responder perguntas financeiras sem depender do LLM.
-
-Exemplos de funções:
-
-```text
-get_spending_summary
-get_spending_by_category
-get_spending_by_merchant
-compare_periods
-get_monthly_cashflow
-get_recurring_expenses
-get_largest_transactions
-```
-
-Fluxo:
-
-```text
-PostgreSQL
-    ↓
-analytics service
-    ↓
-dados estruturados
-    ↓
-API / LLM tools
-```
-
----
-
-# Categorização
-
-A categorização deve seguir uma estratégia em camadas.
-
-```text
-categoria do provider
-        ↓
-normalização de merchant
-        ↓
-regras determinísticas
-        ↓
-regras definidas pelo usuário
-        ↓
-LLM como fallback
-```
-
-Exemplo:
-
-```text
-UBER *TRIP
-UBER DO BRASIL
-UBER* PENDING
-
-        ↓
-
-merchant = Uber
-category = Transport
-```
-
-O resultado de classificações desconhecidas poderá ser persistido para evitar novas chamadas ao LLM para o mesmo estabelecimento.
-
----
-
-# Integração Open Finance
-
-A aplicação não deve depender diretamente de um fornecedor.
-
-Interface conceitual:
-
-```python
-class FinancialDataProvider:
-    async def get_accounts(self):
-        ...
-
-    async def get_transactions(self):
-        ...
-
-    async def get_balances(self):
-        ...
-```
-
-Implementação inicial:
-
-```text
-FinancialDataProvider
-        │
-        └── OpenFinanceProvider
-```
-
-Isso permite substituir ou adicionar fornecedores no futuro sem alterar o domínio da aplicação.
-
----
-
-# Sincronização
-
-Fluxo esperado:
-
-```text
-Open Finance
-     ↓
-Sync Service
-     ↓
-normalize
-     ↓
-deduplicate
-     ↓
-categorize
-     ↓
-PostgreSQL
-```
-
-Cada execução deverá gerar um registro em `sync_runs`.
-
-Exemplo:
-
-```text
-id
-provider
-started_at
-finished_at
-status
-transactions_received
-transactions_created
-transactions_updated
-error
-```
-
----
-
-# LLM
-
-O histórico completo de transações não será enviado ao modelo.
-
-O LLM funcionará como uma camada de interpretação e orquestração:
-
-```text
-Usuário
-   ↓
-  LLM
-   ↓
-Tool Calling
-   ↓
-Analytics Service
-   ↓
-PostgreSQL
-   ↓
-resultado agregado
-   ↓
-  LLM
-   ↓
-resposta
-```
-
-Exemplo:
-
-```text
-Usuário:
-
-"Quanto gastei com restaurantes nos últimos 3 meses?"
-
-        ↓
-
-LLM chama:
-
-get_spending_by_category(
-    category="restaurant",
-    start_date="...",
-    end_date="..."
-)
-
-        ↓
-
-Backend retorna:
-
-{
-  "month_1": 620.00,
-  "month_2": 780.00,
-  "month_3": 1100.00
-}
-
-        ↓
-
-LLM interpreta os dados.
-```
-
-## Tools planejadas
-
-```text
-get_transactions
-get_spending_summary
-get_spending_by_category
-get_spending_by_merchant
-compare_periods
-get_recurring_expenses
-get_largest_transactions
-get_monthly_cashflow
-```
-
-Futuramente:
-
-```text
-detect_anomalies
-forecast_month
-simulate_budget
-```
-
----
-
-# Visualizações
-
-Gráficos serão gerados pelo aplicativo iOS com dados estruturados retornados pelo backend.
-
-Exemplos:
-
-- Gastos por categoria.
-- Evolução mensal.
-- Gastos por estabelecimento.
-- Fluxo de caixa.
-- Comparação entre períodos.
-
-O LLM poderá solicitar uma determinada análise, mas não será responsável por gerar a representação visual final.
-
----
-
-# Segurança
-
-Este projeto manipula dados financeiros e deve tratar segurança como requisito de primeira classe.
-
-## Regras
-
-- Secrets nunca devem ser commitados.
-- Chaves do provedor Open Finance ficam somente no backend.
-- Chaves do LLM ficam somente no backend.
-- Tokens do usuário no iOS devem ser armazenados no Keychain.
-- Toda comunicação em produção deve usar HTTPS.
-- Logs não devem conter dados financeiros sensíveis.
-- Credenciais devem ser fornecidas por variáveis de ambiente ou secret manager.
-- Backups do banco devem ser protegidos.
-- Dados enviados ao LLM devem ser minimizados.
-
-Fluxo esperado:
-
-```text
-iPhone
-  │
- HTTPS
-  │
-  ▼
-Backend
-  ├── Open Finance credentials
-  ├── LLM API key
-  └── Database credentials
-```
-
----
-
-# Requisitos funcionais
-
-## RF-01 — Transações
-
-O sistema deve armazenar e consultar transações financeiras.
-
-## RF-02 — Filtros
-
-O usuário deve conseguir filtrar transações por período, categoria e estabelecimento.
-
-## RF-03 — Categorias
-
-O sistema deve classificar transações em categorias.
-
-## RF-04 — Dashboard
-
-O aplicativo deve apresentar um resumo financeiro do período selecionado.
-
-## RF-05 — Analytics
-
-O backend deve fornecer métricas agregadas sobre gastos.
-
-## RF-06 — Sincronização
-
-O sistema deve ser capaz de sincronizar dados de um provedor financeiro.
-
-## RF-07 — Deduplicação
-
-A sincronização não deve criar transações duplicadas.
-
-## RF-08 — Histórico de sync
-
-Cada sincronização deve possuir status e informações suficientes para troubleshooting.
-
-## RF-09 — Assistente
-
-O usuário poderá realizar perguntas em linguagem natural sobre os dados disponíveis.
-
-## RF-10 — Tool Calling
-
-O LLM deverá consultar os dados através de ferramentas controladas pelo backend.
-
----
-
-# Requisitos não funcionais
-
-## Segurança
-
-Nenhum segredo sensível deve existir no bundle do aplicativo iOS.
-
-## Privacidade
-
-A quantidade de dados financeiros enviados ao LLM deve ser minimizada.
-
-## Confiabilidade
-
-A aplicação deve evitar duplicação e corrupção de transações.
-
-## Precisão
-
-Cálculos financeiros devem utilizar tipos adequados para valores monetários.
-
-## Observabilidade
-
-Falhas de sincronização e integrações devem gerar logs úteis sem expor dados sensíveis.
-
-## Testabilidade
-
-Regras de normalização, categorização e analytics devem possuir testes automatizados.
-
-## Manutenibilidade
-
-Integrações externas devem estar isoladas do domínio da aplicação.
-
-## Performance
-
-Consultas comuns do dashboard devem ser executadas de forma rápida e sem depender do LLM.
-
----
-
-# Desenvolvimento local
 
 ## Requisitos
 
-- Python
-- Docker
-- Docker Compose
-- PostgreSQL
-- Xcode
-- iPhone Simulator ou dispositivo físico
+- Docker Engine/Desktop com Docker Compose v2 para a opção em containers.
+- Python **3.12+** para executar o backend e os testes no host.
+- PostgreSQL **18** para a opção nativa. Os testes também exigem PostgreSQL; não usam SQLite.
+- macOS com **Xcode 16+** e destino iOS **16+** para compilar/executar o aplicativo. Windows permite desenvolver/verificar o backend, mas não compilar SwiftUI ou usar o simulador iOS.
 
-## Backend
+## Configuração
 
-Fluxo planejado:
+Na raiz, copie `.env.example` para `.env` e substitua `replace_with_local_password` nos dois URLs e em `POSTGRES_PASSWORD`. Use letras/dígitos na senha local para simplificar a interpolação do Compose. URLs configurados manualmente precisam de percent-encoding para caracteres especiais na senha.
 
-```bash
-cd backend
-
-cp ../.env.example .env
-
-docker compose up -d
-
-# instalar dependências
-# executar migrations
-# iniciar FastAPI
+```powershell
+Copy-Item .env.example .env
 ```
 
-A configuração exata será adicionada quando o bootstrap do backend estiver implementado.
+No macOS/Linux, use `cp .env.example .env`. Não sobrescreva um `.env` já configurado. As variáveis de processo têm prioridade sobre o arquivo. Nenhum segredo vai no aplicativo iOS.
 
----
+| Variável | Uso |
+| --- | --- |
+| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | Inicialização do PostgreSQL no Compose |
+| `POSTGRES_PORT` | Porta publicada no host; padrão 5432 |
+| `DATABASE_URL` | Backend no host; driver obrigatório `postgresql+psycopg` |
+| `TEST_DATABASE_URL` | Conexão explícita dos testes; exige permissão para criar schemas |
+| `BACKEND_BIND` | `127.0.0.1` por padrão; `0.0.0.0` para desenvolvimento em LAN confiável |
+| `BACKEND_PORT` | Porta HTTP do backend; padrão 8000 |
 
-# Variáveis de ambiente
+Se 5432 já estiver ocupada, altere `POSTGRES_PORT` e a porta dos URLs no `.env`. Dentro do Compose, o backend usa o hostname `db` e a porta 5432 automaticamente. O arquivo `DATABASE_URL` do host não precisa usar esse hostname.
 
-Exemplo futuro de `.env.example`:
+## Executar tudo com Docker
 
-```env
-DATABASE_URL=
-
-OPEN_FINANCE_CLIENT_ID=
-OPEN_FINANCE_CLIENT_SECRET=
-
-LLM_API_KEY=
-LLM_MODEL=
+```sh
+docker compose up -d --build
+docker compose exec backend python -m app.db.seed
+docker compose ps
+docker compose run --rm --no-deps backend python -m pytest -q
 ```
 
-Nunca adicionar valores reais ao repositório.
+O serviço `migrate` aguarda o banco saudável, executa `alembic upgrade head` e termina antes do backend iniciar. Para repetir manualmente: `docker compose run --rm migrate`. O seed é explícito, transacional e pode ser repetido sem duplicar os exemplos.
 
----
+A API estará em <http://127.0.0.1:8000>, com [Swagger /docs](http://127.0.0.1:8000/docs), [OpenAPI JSON](http://127.0.0.1:8000/openapi.json) e [health check](http://127.0.0.1:8000/health). Ajuste a porta dos links se necessário.
 
-# Testes
+`docker compose down` para os containers e preserva o volume `postgres_data`. Alterar a senha do `.env` não altera a senha de um volume já inicializado. O volume é montado em `/var/lib/postgresql`, conforme o [layout oficial do PostgreSQL 18 no Docker](https://docs.docker.com/guides/postgresql/).
 
-Prioridade de testes:
+## Backend e testes no host
 
-1. Normalização de transações.
-2. Deduplicação.
-3. Categorização.
-4. Analytics.
-5. Datas e períodos.
-6. Valores monetários.
-7. Integração com providers.
-8. Endpoints críticos.
+Na raiz, em PowerShell:
 
-Backend:
-
-```bash
-pytest
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r backend/requirements.lock
+.\.venv\Scripts\python.exe -m pip install --no-deps -e backend
+docker compose up -d db
+.\.venv\Scripts\python.exe scripts/dev.py migrate
+.\.venv\Scripts\python.exe scripts/dev.py seed
+.\.venv\Scripts\python.exe scripts/dev.py test
+.\.venv\Scripts\python.exe scripts/dev.py lint
+.\.venv\Scripts\python.exe scripts/dev.py api
 ```
 
----
+No macOS/Linux, use `python3 -m venv .venv` e substitua `.\.venv\Scripts\python.exe` por `.venv/bin/python`. Não é necessário ativar o ambiente virtual. O lock registra as versões verificadas, incluindo ferramentas de teste do ambiente local.
 
-# CI/CD
+Com PostgreSQL nativo, dispense `docker compose up -d db`: crie um banco vazio e um usuário local com senha, configure `DATABASE_URL`/`TEST_DATABASE_URL` e execute os mesmos comandos de migration/seed/teste/API. Não use o banco de produção. Os testes criam um schema aleatório `test_<uuid>`, aplicam a migration, isolam cada caso por transação/savepoint e removem apenas esse schema ao terminar.
 
-Fluxo esperado:
+O task runner oferece `db`, `up`, `down`, `migrate`, `seed`, `api`, `test`, `lint` e `docker-test`. Equivalentes diretos, a partir da raiz:
 
-```text
-Pull Request
-     ↓
-GitHub Actions
-     ↓
-lint
-     ↓
-tests
-     ↓
-build
-     ↓
-merge
+```sh
+python -m alembic -c backend/alembic.ini upgrade head
+python -m app.db.seed
+python -m pytest backend/tests -q
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
-Futuramente:
+## API e regras financeiras
 
-```text
-main
- ↓
-CI
- ↓
-Docker image
- ↓
-deploy
+| Método/rota | Resposta |
+| --- | --- |
+| `GET /health` | Readiness com consulta real ao banco; 503 se indisponível |
+| `GET /transactions` | `{items, total, limit, offset}` |
+| `GET /transactions/{id}` | Transação com conta/categoria; 404 se ausente |
+| `GET /categories` | IDs e nomes para o filtro de categoria |
+| `GET /analytics/spending-summary` | Gastos, receitas e contagens por tipo |
+| `GET /analytics/spending-by-category` | `{currency, period_start, period_end, items}` |
+
+Transações e analytics aceitam `start_date=YYYY-MM-DD` e `end_date=YYYY-MM-DD`, **ambos inclusivos**. Um limite omitido fica aberto; os campos de período retornam os limites solicitados, com `null` onde não foram informados. Intervalos invertidos ou datas inválidas retornam 422.
+
+Lista: `limit` padrão 50, entre 1 e 100; `offset` padrão 0, entre 0 e 1.000.000. Ordenação por data decrescente e UUID decrescente para estabilidade. `category_id` é opcional; um UUID válido sem correspondência retorna lista vazia. Offset além do fim também retorna lista vazia.
+
+Exemplo:
+
+```http
+GET /analytics/spending-summary?start_date=2026-09-01&end_date=2026-09-30
 ```
 
-O deploy do aplicativo iOS será manual inicialmente.
-
----
-
-# GitHub Project
-
-O desenvolvimento será organizado usando GitHub Projects em formato Kanban.
-
-Status:
-
-```text
-Backlog
-   ↓
-Ready
-   ↓
-In Progress
-   ↓
-Done
+```json
+{
+  "currency": "BRL",
+  "period_start": "2026-09-01",
+  "period_end": "2026-09-30",
+  "total_spending": "3649.94",
+  "total_income": "8150.00",
+  "transaction_count": 21,
+  "expense_count": 18,
+  "income_count": 2,
+  "transfer_count": 1
+}
 ```
 
-Campos adicionais:
+- `amount` é sempre não negativo: `debit` = despesa bruta; `credit` = receita; `transfer` = movimentação interna excluída dos dois totais. Contagem total inclui os três tipos. Estornos não têm tratamento específico neste MVP.
+- Dinheiro usa `Decimal`, `NUMERIC(18,2)` e strings JSON com duas casas. Entradas binárias, não finitas, negativas ou com frações de centavo são rejeitadas antes da gravação pelo SQLAlchemy. Não há conversão cambial; banco e API permitem somente BRL.
+- Gastos por categoria incluem apenas débitos. Categoria nula aparece como `Sem categoria`, com `category_id: null`. Períodos vazios retornam `"0.00"`, contagens zero e lista de categorias vazia.
+- Tabelas: `accounts`, `categories`, `transactions`; UUIDs, FKs, unicidade `(account_id, external_id)` e timestamps com fuso. Os índices atendem período/ordenação e categoria/período; a unicidade composta também cobre conta. `updated_at` é atualizado nos writes SQLAlchemy. User, Merchant e SyncRun ficam para quando houver um requisito real.
 
-```text
-Priority
-- P0
-- P1
-- P2
+## Aplicativo iOS
 
-Area
-- Foundation
-- Database
-- Backend
-- iOS
-- Analytics
-- Open Finance
-- AI
-- Security
-- Infrastructure
-```
+No Mac, abra `ios/FinanceCopilot.xcodeproj`, escolha o scheme **FinanceCopilot**, um iPhone Simulator e execute **Run**. Não precisa gerar projeto nem instalar dependências Swift. **Product → Test** executa o target XCTest incluído.
 
-Regra recomendada:
+Para alterar a URL, copie `ios/Config/Local.xcconfig.example` para `ios/Config/Local.xcconfig` e ajuste `API_BASE_URL`. Esse arquivo é ignorado pelo Git. Use `http:$(SLASH)$(SLASH)localhost:8000` quando o backend estiver no mesmo Mac do simulador. A sintaxe evita que `//` seja interpretado como comentário de xcconfig.
 
-> Manter no máximo 1 ou 2 issues em `In Progress`.
+Para um **iPhone físico**, ou um simulador no Mac acessando este backend Windows:
 
----
+1. Use o endereço LAN do computador do backend, por exemplo `http:$(SLASH)$(SLASH)192.168.1.10:8000`.
+2. Defina `BACKEND_BIND=0.0.0.0` e reinicie o backend/Compose. Mantenha o PostgreSQL em loopback.
+3. Conecte os dispositivos à mesma rede confiável e permita a porta HTTP no firewall dessa rede.
+4. No dispositivo, aceite a permissão de rede local. Para iPhone físico, selecione sua equipe em **Signing & Capabilities** e um bundle ID disponível.
 
-# Áreas do projeto
+A configuração **Debug** permite HTTP para desenvolvimento local. **Release** não contém exceção ATS e o cliente exige HTTPS. Isso não implementa autenticação ou torna o MVP adequado para exposição pública.
 
-Parent issues / áreas planejadas:
+Dashboard e lista compartilham o período. Há atalhos para setembro/2026, todo o dataset e mês atual, além de datas personalizadas. As telas incluem carregamento, vazio, erro com retry e atualização. A lista pagina em blocos de 50. O detalhe consulta o endpoint por UUID. O Swift Charts recebe centavos inteiros e exibe BRL; valores fora de `Int64` continuam na lista exata e não são desenhados no gráfico.
 
-```text
-🏗 Foundation
-🗄 Database
-🔌 Backend API
-📱 iOS
-📊 Analytics
-🏦 Open Finance
-🤖 AI Assistant
-🔐 Security
-🚀 Infrastructure
-```
+## Segurança, verificação e limites
 
-Ordem inicial de execução:
+Este MVP é **local, sem autenticação e com dados fictícios**. Não o exponha à internet nem carregue dados reais antes de adicionar autenticação e controles de acesso. `.env`, arquivos locais, banco de teste e configurações pessoais são ignorados. Nenhuma chave de LLM/Open Finance ou credencial de banco existe no iOS. Respostas usam `no-store`; acesso HTTP detalhado e logging SQL com dados são desativados nos comandos fornecidos. Erros retornam mensagens genéricas, sem SQL, parâmetros ou corpos de requisição.
 
-```text
-Foundation
-    ↓
-Database
-    ↓
-Backend
-    ↓
-iOS
-    ↓
-Analytics
-    ↓
-Open Finance
-    ↓
-AI Assistant
-```
+Consulte [a verificação do MVP](docs/verification.md) para os comandos executados, resultados e limites desta máquina. O backend foi testado com PostgreSQL nativo. **Docker não estava instalado; a imagem/Compose não foram executados. O app iOS e XCTest não foram compilados ou executados em Windows.** A próxima validação é abrir o projeto no Xcode, executar os testes e percorrer as três telas com o backend ativo.
 
----
-
-# Decisões arquiteturais
-
-Decisões importantes deverão ser documentadas em:
-
-```text
-docs/adr/
-```
-
-Exemplos:
-
-```text
-ADR-001 — Monorepo
-ADR-002 — FastAPI
-ADR-003 — PostgreSQL
-ADR-004 — Monólito modular
-ADR-005 — SwiftUI
-ADR-006 — Tool calling para acesso do LLM aos dados
-ADR-007 — Adapter para integração Open Finance
-```
-
----
-
-# Princípios de engenharia
-
-1. Começar simples.
-2. Construir vertical slices pequenos.
-3. Evitar dependências sem necessidade real.
-4. Não usar LLM para problemas determinísticos.
-5. Separar domínio de integrações externas.
-6. Tratar dinheiro com tipos numéricos adequados.
-7. Segurança e privacidade desde o início.
-8. Preferir código testável a abstrações prematuras.
-9. Não otimizar para escala que ainda não existe.
-10. Cada MVP deve produzir algo utilizável.
-
----
-
-# Aviso
-
-Este projeto é desenvolvido inicialmente para organização e análise financeira pessoal.
-
-O assistente de IA não deve ser tratado como consultor de investimentos e suas respostas não substituem orientação profissional especializada.
-
----
-
-# Licença
-
-A definir.
+MVP 0.1 usa apenas seed determinístico: não inclui CSV, edição/importação de dados, multiusuário, autenticação, Open Finance, LLM, comparação de períodos ou análises avançadas.

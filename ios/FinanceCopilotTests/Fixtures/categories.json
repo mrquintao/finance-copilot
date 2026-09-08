@@ -1,0 +1,61 @@
+{
+  "currency": "BRL",
+  "period_start": "2026-09-01",
+  "period_end": "2026-09-30",
+  "items": [
+    {
+      "category_id": "d08d272e-141e-5c6f-ac25-ba7fb2a43b81",
+      "category": "Moradia",
+      "amount": "2043.18",
+      "transaction_count": 3
+    },
+    {
+      "category_id": "5d85cc38-09ae-5d3f-8633-248ac5c3927c",
+      "category": "Mercado",
+      "amount": "613.08",
+      "transaction_count": 2
+    },
+    {
+      "category_id": "aac519ac-e7a9-5f9e-b90e-24e7db95e193",
+      "category": "Transporte",
+      "amount": "317.60",
+      "transaction_count": 3
+    },
+    {
+      "category_id": "105a57f5-f78b-5b86-a60b-e6f612de8707",
+      "category": "Saúde",
+      "amount": "223.38",
+      "transaction_count": 2
+    },
+    {
+      "category_id": "f2afd11d-83a7-5669-b322-a33aef6c5125",
+      "category": "Alimentação",
+      "amount": "182.10",
+      "transaction_count": 3
+    },
+    {
+      "category_id": "bd77e606-9163-548a-a648-ea915299834d",
+      "category": "Compras",
+      "amount": "105.75",
+      "transaction_count": 1
+    },
+    {
+      "category_id": "bc7f90c8-9612-568c-8a1d-db32201e7a57",
+      "category": "Lazer",
+      "amount": "69.85",
+      "transaction_count": 1
+    },
+    {
+      "category_id": "e00518e9-20db-595a-bc60-fc10d5f315ea",
+      "category": "Assinaturas",
+      "amount": "61.80",
+      "transaction_count": 2
+    },
+    {
+      "category_id": null,
+      "category": "Sem categoria",
+      "amount": "33.20",
+      "transaction_count": 1
+    }
+  ]
+}

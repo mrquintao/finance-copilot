@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+.local/
+.DS_Store
+DerivedData/
+xcuserdata/
+*.xcuserstate
+ios/Config/Local.xcconfig
