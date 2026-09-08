@@ -10,6 +10,10 @@ from typing import Literal
 TransactionKind = Literal["debit", "credit", "transfer"]
 
 
+class ProviderError(RuntimeError):
+    """Safe provider error that can be persisted or returned without leaking secrets."""
+
+
 @dataclass(frozen=True, slots=True)
 class ProviderAccount:
     external_id: str
