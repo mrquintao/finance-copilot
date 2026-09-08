@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
-from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.db.models import Account, Category, SyncRun, Transaction
-from app.integrations.open_finance.provider import FinancialDataProvider, ProviderTransaction
+from app.integrations.open_finance.provider import (
+    FinancialDataProvider,
+    ProviderError,
+    ProviderTransaction,
+)
 
 
 CATEGORY_RULES: tuple[tuple[tuple[str, ...], str], ...] = (
@@ -62,15 +65,18 @@ class SyncService:
                     end_date=end_date,
                 )
                 received += len(transactions)
-                existing_ids = set(
-                    session.scalars(
-                        select(Transaction.external_id).where(
-                            Transaction.account_id == account.id,
-                            Transaction.external_id.in_(
-                                [transaction.external_id for transaction in transactions]
-                            ),
+                transaction_ids = [transaction.external_id for transaction in transactions]
+                existing_ids = (
+                    set(
+                        session.scalars(
+                            select(Transaction.external_id).where(
+                                Transaction.account_id == account.id,
+                                Transaction.external_id.in_(transaction_ids),
+                            )
                         )
                     )
+                    if transaction_ids
+                    else set()
                 )
                 for transaction in transactions:
                     category = self._category_for(session, transaction)
@@ -198,7 +204,6 @@ class SyncService:
 
     @staticmethod
     def _safe_error(exc: Exception) -> str:
-        message = str(exc).strip()
-        if not message:
-            return type(exc).__name__
-        return message[:500]
+        if isinstance(exc, ProviderError):
+            return str(exc)[:500]
+        return f"Synchronization failed ({type(exc).__name__})."
