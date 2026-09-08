@@ -15,71 +15,84 @@ jobs:
 
       - name: Start mock backend
         run: |
-          python3 -u - <<'PY' > mock-backend.log 2>&1 &
-          from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-          from pathlib import Path
-          from urllib.parse import urlparse
+          set -euo pipefail
 
-          root = Path.cwd()
+          mkdir -p mock-api/analytics
 
-          routes = {
-              "/analytics/spending-summary":
-                  root / "ios/FinanceCopilotTests/Fixtures/summary.json",
+          cp ios/FinanceCopilotTests/Fixtures/summary.json \
+            mock-api/analytics/spending-summary
 
-              "/analytics/spending-by-category":
-                  root / "ios/FinanceCopilotTests/Fixtures/categories.json",
-          }
+          cp ios/FinanceCopilotTests/Fixtures/categories.json \
+            mock-api/analytics/spending-by-category
 
-          class Handler(BaseHTTPRequestHandler):
-              def do_GET(self):
-                  path = urlparse(self.path).path
+          echo '{"status":"ok"}' > mock-api/health
 
-                  print(f"GET {path}", flush=True)
+          nohup python3 -m http.server 8000 \
+            --bind 127.0.0.1 \
+            --directory mock-api \
+            > mock-backend.log 2>&1 &
 
-                  if path == "/health":
-                      body = b'{"status":"ok"}'
-                      self.send_response(200)
-                      self.send_header("Content-Type", "application/json")
-                      self.send_header("Content-Length", str(len(body)))
-                      self.end_headers()
-                      self.wfile.write(body)
-                      return
+          MOCK_PID=$!
+          echo "$MOCK_PID" > mock-backend.pid
 
-                  fixture = routes.get(path)
+          echo "Mock backend PID: $MOCK_PID"
 
-                  if fixture and fixture.exists():
-                      body = fixture.read_bytes()
+          for i in {1..10}; do
+            if curl \
+              --silent \
+              --show-error \
+              --fail \
+              --max-time 2 \
+              http://127.0.0.1:8000/health; then
 
-                      self.send_response(200)
-                      self.send_header("Content-Type", "application/json")
-                      self.send_header("Content-Length", str(len(body)))
-                      self.end_headers()
-                      self.wfile.write(body)
-                      return
+              echo
+              echo "Mock backend is ready."
+              exit 0
+            fi
 
-                  body = b'{"detail":"Not Found"}'
-                  self.send_response(404)
-                  self.send_header("Content-Type", "application/json")
-                  self.send_header("Content-Length", str(len(body)))
-                  self.end_headers()
-                  self.wfile.write(body)
+            if ! kill -0 "$MOCK_PID" 2>/dev/null; then
+              echo "Mock backend exited unexpectedly."
+              cat mock-backend.log
+              exit 1
+            fi
 
-              def log_message(self, format, *args):
-                  return
+            echo "Waiting for mock backend..."
+            sleep 1
+          done
 
-          print("Mock backend running at http://localhost:8000", flush=True)
+          echo "Mock backend did not become ready."
+          cat mock-backend.log
 
-          ThreadingHTTPServer(
-              ("0.0.0.0", 8000),
-              Handler
-          ).serve_forever()
-          PY
+          lsof -nP -iTCP:8000 -sTCP:LISTEN || true
 
-          echo $! > mock-backend.pid
+          exit 1
 
-          sleep 2
+      - name: Configure UI backend
+        run: |
+          cat > ios/Config/Local.xcconfig <<'EOF'
+          API_BASE_URL = http:$(SLASH)$(SLASH)127.0.0.1:8000
+          EOF
 
-          curl --fail http://localhost:8000/health
+          echo "Local.xcconfig:"
+          cat ios/Config/Local.xcconfig
+
+      - name: Test mock API
+        run: |
+          echo "Health:"
+          curl --fail --silent --show-error \
+            http://127.0.0.1:8000/health
+
+          echo
+          echo "Summary:"
+          curl --fail --silent --show-error \
+            http://127.0.0.1:8000/analytics/spending-summary
+
+          echo
+          echo "Categories:"
+          curl --fail --silent --show-error \
+            http://127.0.0.1:8000/analytics/spending-by-category
+
+          echo
 
       - name: Show Xcode version
         run: xcodebuild -version
@@ -143,7 +156,7 @@ jobs:
         run: |
           xcrun simctl launch "$SIMULATOR_ID" "$BUNDLE_ID"
 
-          # Aguarda a interface terminar de abrir
+          # Aguarda a UI carregar e buscar os dados do mock backend
           sleep 8
 
       - name: Capture screenshot
@@ -161,4 +174,12 @@ jobs:
         with:
           name: finance-copilot-ui
           path: screenshots/finance-copilot.png
+          retention-days: 7
+
+      - name: Upload mock backend log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mock-backend-log
+          path: mock-backend.log
           retention-days: 7
