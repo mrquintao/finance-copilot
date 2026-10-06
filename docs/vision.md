@@ -2,7 +2,7 @@
 
 Aplicativo pessoal de finanças para iPhone que consolida transações, categoriza gastos, gera análises e permite conversar com um assistente baseado em LLM sobre o próprio histórico financeiro.
 
-> Status: **em planejamento / MVP**
+> Status: **MVP 0.2 concluído** — próximo passo: MVP 0.3 (Analytics)
 >
 > Escopo inicial: **uso pessoal**
 
@@ -69,17 +69,18 @@ Objetivo:
 
 ### Entregas
 
-- [ ] Backend FastAPI.
-- [ ] PostgreSQL local.
-- [ ] Modelo de transações.
-- [ ] Dataset fake / importação CSV.
-- [ ] API de transações.
-- [ ] Gastos agregados por categoria.
-- [ ] Gastos agregados por mês.
-- [ ] Aplicativo SwiftUI.
-- [ ] Dashboard inicial.
-- [ ] Lista de transações.
-- [ ] Filtro por período.
+- [x] Backend FastAPI.
+- [x] PostgreSQL local.
+- [x] Modelo de transações.
+- [x] Dataset fake (seed determinístico com 126 transações).
+- [ ] Importação CSV.
+- [x] API de transações.
+- [x] Gastos agregados por categoria.
+- [ ] Gastos agregados por mês (série mensal; hoje há resumo por período).
+- [x] Aplicativo SwiftUI.
+- [x] Dashboard inicial.
+- [x] Lista de transações.
+- [x] Filtro por período.
 
 ---
 
@@ -91,14 +92,14 @@ Objetivo:
 
 ### Entregas
 
-- [ ] Criar abstração `FinancialDataProvider`.
-- [ ] Implementar adapter do provedor Open Finance.
-- [ ] Importar contas.
-- [ ] Importar transações.
-- [ ] Normalizar dados recebidos.
-- [ ] Deduplicar transações.
-- [ ] Registrar histórico de sincronizações.
-- [ ] Tratar erros e retries de integração.
+- [x] Criar abstração `FinancialDataProvider`.
+- [x] Implementar adapter do provedor Open Finance.
+- [x] Importar contas.
+- [x] Importar transações.
+- [x] Normalizar dados recebidos.
+- [x] Deduplicar transações.
+- [x] Registrar histórico de sincronizações.
+- [x] Tratar erros e retries de integração.
 
 ---
 
@@ -110,7 +111,7 @@ Objetivo:
 
 ### Entregas
 
-- [ ] Gastos por categoria.
+- [x] Gastos por categoria.
 - [ ] Gastos por estabelecimento.
 - [ ] Comparação entre períodos.
 - [ ] Fluxo de caixa mensal.
