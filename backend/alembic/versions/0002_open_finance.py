@@ -16,9 +16,7 @@ def upgrade() -> None:
     op.create_unique_constraint(
         "uq_accounts_provider", "accounts", ["provider", "provider_account_id"]
     )
-    op.create_index(
-        "ix_accounts_provider_item_id", "accounts", ["provider", "provider_item_id"]
-    )
+    op.create_index("ix_accounts_provider_item_id", "accounts", ["provider", "provider_item_id"])
 
     op.create_table(
         "sync_runs",

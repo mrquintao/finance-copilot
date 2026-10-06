@@ -23,7 +23,9 @@ def provider() -> PluggyProvider:
     try:
         settings = pluggy_settings()
     except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail="Open Finance provider is not configured.") from exc
+        raise HTTPException(
+            status_code=503, detail="Open Finance provider is not configured."
+        ) from exc
     return PluggyProvider(
         client_id=settings.client_id,
         client_secret=settings.client_secret,
@@ -123,11 +125,7 @@ async def synchronize(payload: SyncRequest, session: SessionDep) -> SyncRunRead:
 @router.post("/refresh", response_model=SyncList)
 async def refresh_connected_accounts(session: SessionDep) -> SyncList:
     item_ids = list(
-        session.scalars(
-            select(SyncRun.item_id)
-            .where(SyncRun.provider == "pluggy")
-            .distinct()
-        )
+        session.scalars(select(SyncRun.item_id).where(SyncRun.provider == "pluggy").distinct())
     )
     runs: list[SyncRunRead] = []
     service = SyncService(provider())

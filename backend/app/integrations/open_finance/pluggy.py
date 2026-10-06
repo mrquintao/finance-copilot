@@ -181,7 +181,9 @@ class PluggyProvider(FinancialDataProvider):
                 await asyncio.sleep(0.5 * (2**attempt))
                 continue
             if response.status_code >= 400:
-                raise ProviderError(f"Open Finance provider request failed ({response.status_code}).")
+                raise ProviderError(
+                    f"Open Finance provider request failed ({response.status_code})."
+                )
             try:
                 return json.loads(response.text, parse_float=Decimal)
             except (json.JSONDecodeError, TypeError) as exc:
