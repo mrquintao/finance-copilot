@@ -1,4 +1,0 @@
-SLASH = /
-API_BASE_URL = http:$(SLASH)$(SLASH)localhost:8000
-#include? "Local.xcconfig"
-SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) DEBUG

@@ -1,8 +1,8 @@
 # Finance Copilot
 
-Aplicativo pessoal de finanças para iPhone que consolida transações, categoriza gastos, gera análises e permite conversar com um assistente baseado em LLM sobre o próprio histórico financeiro.
+Aplicativo pessoal de finanças, com cliente web, que consolida transações, categoriza gastos, gera análises e permite conversar com um assistente baseado em LLM sobre o próprio histórico financeiro.
 
-> Status: **MVP 0.2 concluído** — próximo passo: MVP 0.3 (Analytics)
+> Status: **MVP 0.2 concluído** — em andamento: MVP 0.3 (Produção)
 >
 > Escopo inicial: **uso pessoal**
 
@@ -41,7 +41,7 @@ O LLM não será a fonte de verdade para cálculos financeiros. Operações como
 - Comparar comportamento financeiro entre períodos.
 - Integrar dados via Open Finance.
 - Disponibilizar uma interface conversacional baseada em LLM.
-- Manter dados e credenciais sensíveis fora do aplicativo iOS.
+- Manter dados e credenciais sensíveis fora do cliente web.
 - Construir uma arquitetura simples, modular e evolutiva.
 
 ### Fora do escopo inicial
@@ -65,7 +65,7 @@ O LLM não será a fonte de verdade para cálculos financeiros. Operações como
 
 Objetivo:
 
-> Abrir o aplicativo no iPhone e visualizar gastos por categoria e período usando transações fake ou importadas por CSV.
+> Abrir o aplicativo e visualizar gastos por categoria e período usando transações fake ou importadas por CSV.
 
 ### Entregas
 
@@ -77,7 +77,7 @@ Objetivo:
 - [x] API de transações.
 - [x] Gastos agregados por categoria.
 - [ ] Gastos agregados por mês (série mensal; hoje há resumo por período).
-- [x] Aplicativo SwiftUI.
+- [x] Aplicativo cliente (SwiftUI na época; substituído pelo cliente web no MVP 0.3).
 - [x] Dashboard inicial.
 - [x] Lista de transações.
 - [x] Filtro por período.
@@ -103,7 +103,23 @@ Objetivo:
 
 ---
 
-## MVP 0.3 — Analytics
+## MVP 0.3 — Produção
+
+Objetivo:
+
+> Usar o Finance Copilot no dia a dia, com dados reais, de qualquer dispositivo e com segurança.
+
+### Entregas
+
+- [x] Cliente web (React + TypeScript) com paridade funcional com o app iOS, que foi removido (tag `ios-mvp-0.2`).
+- [ ] Autenticação com cookie `httpOnly` e proteção CSRF.
+- [ ] Deploy HTTPS com web e API no mesmo domínio.
+- [ ] Sync automático por webhooks do Pluggy.
+- [ ] Operação: backups, logs e monitoramento.
+
+---
+
+## MVP 0.4 — Analytics
 
 Objetivo:
 
@@ -122,7 +138,7 @@ Objetivo:
 
 ---
 
-## MVP 0.4 — AI Assistant
+## MVP 0.5 — AI Assistant
 
 Objetivo:
 
@@ -148,7 +164,7 @@ Objetivo:
 
 ---
 
-## MVP 0.5 — Insights proativos
+## MVP 0.6 — Insights proativos
 
 Possíveis exemplos:
 
@@ -166,8 +182,8 @@ A aplicação seguirá inicialmente um modelo de **monólito modular**.
 
 ```text
                          ┌──────────────────┐
-                         │      iPhone      │
-                         │ SwiftUI + Charts │
+                         │  Navegador / PWA │
+                         │ React + Recharts │
                          └────────┬─────────┘
                                   │
                                 HTTPS
@@ -191,9 +207,10 @@ A aplicação seguirá inicialmente um modelo de **monólito modular**.
 
 ## Princípios
 
-- O iPhone nunca acessa diretamente o banco de dados.
-- O iPhone nunca armazena secrets do provedor Open Finance.
-- O iPhone nunca armazena a API key do LLM.
+- O cliente web nunca acessa diretamente o banco de dados.
+- O cliente web nunca recebe secrets do provedor Open Finance.
+- O cliente web nunca recebe a API key do LLM.
+- Web e API ficam no mesmo domínio; o cliente chama a API em `/api`.
 - O backend é responsável por autenticação, regras de negócio e analytics.
 - O banco de dados é a fonte de verdade para transações normalizadas.
 - O LLM acessa dados através de tools controladas pelo backend.
@@ -203,14 +220,17 @@ A aplicação seguirá inicialmente um modelo de **monólito modular**.
 
 # Stack
 
-## iOS
+## Web
 
-- Swift
-- SwiftUI
-- Swift Charts
-- URLSession
-- Keychain
-- Swift Testing / XCTest
+- TypeScript (strict)
+- React
+- Vite
+- React Router
+- TanStack Query
+- Recharts
+- Tailwind CSS
+- ESLint
+- Vitest / Testing Library / MSW
 
 ## Backend
 
@@ -267,19 +287,15 @@ finance-copilot/
 │   ├── pyproject.toml
 │   └── Dockerfile
 │
-├── ios/
-│   └── FinanceCopilot/
-│       ├── App/
-│       ├── Models/
-│       ├── Views/
-│       │   ├── Dashboard/
-│       │   ├── Transactions/
-│       │   ├── Analytics/
-│       │   └── Chat/
-│       ├── ViewModels/
-│       ├── Services/
-│       ├── Networking/
-│       └── Components/
+├── web/
+│   ├── public/
+│   └── src/
+│       ├── api/
+│       ├── components/
+│       ├── hooks/
+│       ├── lib/
+│       ├── pages/
+│       └── test/
 │
 ├── data/
 │   └── samples/
@@ -626,7 +642,7 @@ simulate_budget
 
 # Visualizações
 
-Gráficos serão gerados pelo aplicativo iOS com dados estruturados retornados pelo backend.
+Gráficos são gerados pelo cliente web com dados estruturados retornados pelo backend.
 
 Exemplos:
 
@@ -649,7 +665,7 @@ Este projeto manipula dados financeiros e deve tratar segurança como requisito 
 - Secrets nunca devem ser commitados.
 - Chaves do provedor Open Finance ficam somente no backend.
 - Chaves do LLM ficam somente no backend.
-- Tokens do usuário no iOS devem ser armazenados no Keychain.
+- No web, a sessão usa cookie `httpOnly`, `Secure` e `SameSite`; nada de token em `localStorage`/`sessionStorage`.
 - Toda comunicação em produção deve usar HTTPS.
 - Logs não devem conter dados financeiros sensíveis.
 - Credenciais devem ser fornecidas por variáveis de ambiente ou secret manager.
@@ -659,7 +675,7 @@ Este projeto manipula dados financeiros e deve tratar segurança como requisito 
 Fluxo esperado:
 
 ```text
-iPhone
+Navegador
   │
  HTTPS
   │
@@ -720,7 +736,7 @@ O LLM deverá consultar os dados através de ferramentas controladas pelo backen
 
 ## Segurança
 
-Nenhum segredo sensível deve existir no bundle do aplicativo iOS.
+Nenhum segredo sensível deve existir no bundle do cliente web.
 
 ## Privacidade
 
@@ -760,8 +776,7 @@ Consultas comuns do dashboard devem ser executadas de forma rápida e sem depend
 - Docker
 - Docker Compose
 - PostgreSQL
-- Xcode
-- iPhone Simulator ou dispositivo físico
+- Node.js LTS
 
 ## Backend
 
@@ -852,7 +867,7 @@ Docker image
 deploy
 ```
 
-O deploy do aplicativo iOS será manual inicialmente.
+O deploy do cliente web e da API será manual inicialmente.
 
 ---
 
@@ -884,7 +899,7 @@ Area
 - Foundation
 - Database
 - Backend
-- iOS
+- Web
 - Analytics
 - Open Finance
 - AI
@@ -906,7 +921,7 @@ Parent issues / áreas planejadas:
 🏗 Foundation
 🗄 Database
 🔌 Backend API
-📱 iOS
+🌐 Web
 📊 Analytics
 🏦 Open Finance
 🤖 AI Assistant
@@ -923,7 +938,7 @@ Database
     ↓
 Backend
     ↓
-iOS
+Web
     ↓
 Analytics
     ↓
@@ -949,7 +964,7 @@ ADR-001 — Monorepo
 ADR-002 — FastAPI
 ADR-003 — PostgreSQL
 ADR-004 — Monólito modular
-ADR-005 — SwiftUI
+ADR-005 — Cliente web (React) no lugar do SwiftUI
 ADR-006 — Tool calling para acesso do LLM aos dados
 ADR-007 — Adapter para integração Open Finance
 ```
