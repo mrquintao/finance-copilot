@@ -1,0 +1,33 @@
+@import 'tailwindcss';
+
+:root {
+  color-scheme: light dark;
+  --chart-bar: #0d9488;
+  --chart-grid: #e2e8f0;
+  --chart-text: #475569;
+  --chart-hover: rgb(15 23 42 / 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --chart-bar: #2dd4bf;
+    --chart-grid: #1e293b;
+    --chart-text: #94a3b8;
+    --chart-hover: rgb(248 250 252 / 0.06);
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
