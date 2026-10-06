@@ -23,7 +23,7 @@ def test_migration_matches_models_and_roundtrips(engine):
     with engine.begin() as connection:
         context = MigrationContext.configure(connection, opts={"compare_type": True})
         assert compare_metadata(context, Base.metadata) == []
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0001"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0002"
         command.downgrade(migration_config(connection), "base")
         assert set(inspect(connection).get_table_names()) == {"alembic_version"}
         command.upgrade(migration_config(connection), "head")
@@ -31,6 +31,7 @@ def test_migration_matches_models_and_roundtrips(engine):
             "accounts",
             "categories",
             "transactions",
+            "sync_runs",
             "alembic_version",
         }
 
