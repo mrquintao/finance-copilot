@@ -15,3 +15,8 @@ DerivedData/
 xcuserdata/
 *.xcuserstate
 ios/Config/Local.xcconfig
+
+# Instruções locais para agentes de IA (não versionar)
+AGENTS.md
+CLAUDE.md
+.claude/
