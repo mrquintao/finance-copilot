@@ -981,4 +981,4 @@ O assistente de IA não deve ser tratado como consultor de investimentos e suas 
 
 # Licença
 
-A definir.
+MIT — veja [LICENSE](../LICENSE).
