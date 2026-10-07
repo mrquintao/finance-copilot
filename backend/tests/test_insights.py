@@ -265,3 +265,9 @@ def test_partial_range_states_its_own_comparison_period(client, add):
 )
 def test_both_bounds_are_required(client, params):
     assert client.get(ROUTE, params=params).status_code == 422
+
+
+def test_period_without_a_previous_equivalent_is_rejected(client):
+    response = client.get(ROUTE, params={"start_date": "0001-01-01", "end_date": "0001-01-31"})
+
+    assert response.status_code == 422
