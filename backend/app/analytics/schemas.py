@@ -80,3 +80,34 @@ class PeriodComparison(BaseModel):
     income: MoneyChange
     transaction_count: CountChange
     categories: list[CategoryChange]
+
+
+InsightKind = Literal[
+    "category_increase",
+    "category_decrease",
+    "largest_category_change",
+    "spending_change",
+    "income_change",
+    "recurring_growth",
+]
+
+
+class Insight(MoneyChange):
+    """One rule that fired, with the numbers needed to check it by hand."""
+
+    kind: InsightKind
+    category_id: UUID | None = None
+    category: str | None = None
+
+
+class InsightThresholds(BaseModel):
+    min_change: Money
+    min_percent: Percent
+
+
+class InsightList(BaseModel):
+    currency: Literal["BRL"] = "BRL"
+    period: DateRange
+    previous_period: DateRange
+    thresholds: InsightThresholds
+    items: list[Insight]

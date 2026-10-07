@@ -132,6 +132,7 @@ Core financeiro:
 | `GET /analytics/spending-summary` | Gastos, receitas e contagens |
 | `GET /analytics/spending-by-category` | Gastos por categoria |
 | `GET /analytics/period-comparison` | Gastos, receitas, contagem e categorias contra o período anterior equivalente |
+| `GET /analytics/insights` | Insights por regras fixas sobre a comparação de períodos, sem LLM |
 
 Open Finance:
 
@@ -232,6 +233,7 @@ git checkout ios-mvp-0.2
 - Não há conversão cambial no MVP 0.2; somente BRL é persistido.
 - Categorias do provider passam por uma normalização determinística simples antes de serem persistidas.
 - O LLM continua fora do fluxo financeiro e não faz cálculos.
+- Insights (`GET /analytics/insights`) são regras fixas sobre a comparação com o período anterior: uma variação é relevante quando tem pelo menos R$ 50,00 e, havendo valor anterior, pelo menos 20%. Os tipos são variação relevante de gasto por categoria (alta ou queda), a categoria que mais variou, variação relevante do total de gastos e de receitas, e crescimento relevante dos gastos marcados como recorrentes. Cada insight traz os valores comparados, e a resposta traz os dois períodos e os limiares.
 
 ## Segurança e limites
 
