@@ -37,7 +37,7 @@ O cliente web chama a API sempre em `/api`, na própria origem. Em desenvolvimen
 - API de transações, filtros, paginação e detalhe.
 - Analytics de gastos/receitas e gastos por categoria.
 - Dashboard, lista de transações e detalhe no cliente.
-- Seed determinístico com 126 transações de abril a setembro de 2026.
+- Dataset de demonstração determinístico (126 transações fictícias de abril a setembro de 2026), só para desenvolvimento.
 
 ### MVP 0.2 — Open Finance
 
@@ -111,7 +111,6 @@ Com os comandos do projeto:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/dev.py migrate
-.\.venv\Scripts\python.exe scripts/dev.py seed
 .\.venv\Scripts\python.exe scripts/dev.py api
 ```
 
@@ -119,8 +118,27 @@ Com Docker:
 
 ```sh
 docker compose up -d --build
-docker compose exec backend python -m app.db.seed
 ```
+
+### Persistência
+
+O PostgreSQL do `compose.yaml` grava no volume nomeado `postgres_data`. Reiniciar a API, reiniciar o container ou rodar `docker compose down` **não** apaga nada: contas, transações e histórico de sincronização continuam lá na próxima subida.
+
+`docker compose down -v` remove o volume e, com ele, todos os dados financeiros. Não use esse comando num banco com dados reais.
+
+### Dados de demonstração
+
+O dataset fictício (conta "Conta pessoal (exemplo)" do "Banco Exemplo", com 126 transações) existe para prints, roteiro manual e desenvolvimento num banco **sem** dados reais. Ele não faz parte da instalação e nada o insere automaticamente.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/dev.py seed-demo    # insere o dataset fictício
+.\.venv\Scripts\python.exe scripts/dev.py check-demo   # mostra o que o clean-demo removeria, sem remover
+.\.venv\Scripts\python.exe scripts/dev.py clean-demo   # remove só o dataset fictício
+```
+
+- `seed-demo` recusa rodar se o banco já tiver alguma conta importada de um provedor (`provider` preenchido). Para forçar num banco de desenvolvimento, de propósito: `python -m app.db.seed --allow-provider-data`. O comando antigo `seed` continua existindo como sinônimo.
+- `clean-demo` é a forma suportada de tirar o dataset fictício de um banco que também tem dados reais. Ele apaga a conta de demonstração e as transações dela pelos UUIDs fixos que o seed gera, não por nome nem por `provider IS NULL`. Contas e transações importadas, `sync_runs` e categorias não são tocados. Se a conta de demonstração tiver qualquer transação que o seed não criou, o comando aborta sem apagar nada. Pode ser rodado mais de uma vez.
+- Com dados fictícios e reais no mesmo banco, as telas somam tudo: a API não filtra por origem. Por isso os dois não devem conviver.
 
 ## API
 
@@ -137,6 +155,7 @@ Core financeiro:
 | `GET /analytics/spending-by-category` | Gastos por categoria |
 | `GET /analytics/period-comparison` | Gastos, receitas, contagem e categorias contra o período anterior equivalente |
 | `GET /analytics/insights` | Insights por regras fixas sobre a comparação de períodos, sem LLM |
+| `GET /analytics/month-projection` | Projeção do gasto até o fim do mês de `as_of` (estimativa, com as premissas na resposta) |
 
 Open Finance:
 
@@ -258,7 +277,7 @@ Regras do cliente:
 - datas `YYYY-MM-DD` são tratadas como datas locais, nunca com `new Date("YYYY-MM-DD")`;
 - o período selecionado fica na URL (`?period=previous-month` ou `?start=…&end=…`);
 - o tema (claro ou escuro) segue o sistema até o usuário escolher pelo botão de sol/lua; a escolha fica em `localStorage`;
-- o seed cobre abril a setembro de 2026: use **Mês anterior**, **Últimos 3 meses** ou **Personalizado** se o mês atual estiver vazio.
+- o dataset de demonstração, quando usado, cobre abril a setembro de 2026: escolha **Personalizado** nesse intervalo para vê-lo.
 
 Para testar em um iPhone na mesma LAN confiável, rode `npm run dev -- --host` e abra `http://<IP do computador>:5173`. O backend continua em `127.0.0.1`, porque só o Vite fala com ele. No Safari, **Compartilhar → Adicionar à Tela de Início** instala o app.
 
@@ -270,6 +289,24 @@ O cliente SwiftUI foi removido da `main` quando o cliente web atingiu a paridade
 git checkout ios-mvp-0.2
 ```
 
+## Auditoria de qualidade dos dados
+
+```powershell
+.\.venv\Scripts\python.exe scripts/dev.py audit-data
+```
+
+Imprime um relatório **somente leitura** sobre o banco configurado. Ele nunca apaga nem corrige nada e só mostra contagens, datas e os ids internos das contas: nenhuma descrição, valor, estabelecimento ou identificador da Pluggy.
+
+| Verificação | O que sinaliza |
+| --- | --- |
+| `possible_duplicates` | Transações com mesma conta, data, valor, tipo e descrição. São candidatas a conferir, não erros: duas compras iguais no mesmo dia são legítimas |
+| `missing_external_ids` | Transações importadas sem o id externo usado na deduplicação |
+| `item_never_synchronized` | Item com execuções de sync e nenhuma bem-sucedida |
+| `stale_synchronization` | Item sem sync bem-sucedido há mais de 7 dias |
+| `historical_sync_gap` | Item que já ficou mais de 7 dias entre dois syncs bem-sucedidos (informativo) |
+| `account_without_transactions` | Conta importada sem transações, embora o Item já tenha sincronizado com sucesso |
+| `zero_amount`, `future_date`, `implausibly_old_date`, `blank_description` | Valores que o schema aceita, mas dificilmente estão certos (valor zero, data mais de um dia no futuro, data anterior a 2000, descrição em branco) |
+
 ## Regras financeiras
 
 - `amount` é não negativo.
@@ -280,6 +317,7 @@ git checkout ios-mvp-0.2
 - Não há conversão cambial no MVP 0.2; somente BRL é persistido.
 - Categorias do provider passam por uma normalização determinística simples antes de serem persistidas.
 - O LLM não faz cálculos: no Copilot ele só escolhe consultas e redige; todo valor exibido é conferido contra o resultado das ferramentas.
+- A projeção de fechamento do mês (`GET /analytics/month-projection?as_of=AAAA-MM-DD`) é uma **estimativa**, calculada assim: o gasto variável (débitos não marcados como recorrentes) até `as_of` é multiplicado por dias do mês ÷ dias decorridos, com um único arredondamento ao centavo; os recorrentes não entram na média: soma-se o que já foi gasto com eles e o que o mês anterior teve de recorrente e este ainda não mostrou. Sem transações marcadas como recorrentes, é a média diária simples. No começo do mês a média se apoia em poucos dias; a resposta informa `days_elapsed`.
 - Insights (`GET /analytics/insights`) são regras fixas sobre a comparação com o período anterior: uma variação é relevante quando tem pelo menos R$ 50,00 e, havendo valor anterior, pelo menos 20%. Os tipos são variação relevante de gasto por categoria (alta ou queda), a categoria que mais variou, variação relevante do total de gastos e de receitas, e crescimento relevante dos gastos marcados como recorrentes. Cada insight traz os valores comparados, e a resposta traz os dois períodos e os limiares.
 
 ## Segurança e limites

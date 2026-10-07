@@ -72,7 +72,7 @@ Objetivo:
 - [x] Backend FastAPI.
 - [x] PostgreSQL local.
 - [x] Modelo de transações.
-- [x] Dataset fake (seed determinístico com 126 transações).
+- [x] Dataset fake (seed determinístico com 126 transações; hoje só para demonstração, removível com `clean-demo`).
 - [ ] Importação CSV.
 - [x] API de transações.
 - [x] Gastos agregados por categoria.

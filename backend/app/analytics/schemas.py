@@ -111,3 +111,25 @@ class InsightList(BaseModel):
     previous_period: DateRange
     thresholds: InsightThresholds
     items: list[Insight]
+
+
+class MonthProjection(BaseModel):
+    """Projected spending for the month of `as_of`. An estimate, never a guaranteed value."""
+
+    currency: Literal["BRL"] = "BRL"
+    method: Literal["linear_daily_average"] = "linear_daily_average"
+    as_of: date
+    month: DateRange
+    days_elapsed: int
+    days_in_month: int
+    days_remaining: int
+    spent_so_far: Money
+    recurring_so_far: Money
+    variable_so_far: Money
+    variable_daily_average: Money
+    # Spending flagged as recurring in the previous month, used as what to expect this month.
+    recurring_basis: DateRange | None
+    recurring_expected: Money
+    recurring_remaining: Money
+    projected_variable: Money
+    projected_total: Money

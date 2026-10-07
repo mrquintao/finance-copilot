@@ -132,6 +132,26 @@ export interface CategoryChange extends MoneyChange {
   category: string
 }
 
+/** An estimate for the month of `as_of`. All money fields are decimal strings. */
+export interface MonthProjection {
+  currency: 'BRL'
+  method: 'linear_daily_average'
+  as_of: LocalDate
+  month: DateRange
+  days_elapsed: number
+  days_in_month: number
+  days_remaining: number
+  spent_so_far: Money
+  recurring_so_far: Money
+  variable_so_far: Money
+  variable_daily_average: Money
+  recurring_basis: DateRange | null
+  recurring_expected: Money
+  recurring_remaining: Money
+  projected_variable: Money
+  projected_total: Money
+}
+
 export interface PeriodComparison {
   currency: 'BRL'
   period: DateRange
