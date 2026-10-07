@@ -38,6 +38,22 @@ class SyncService:
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> SyncRun:
+        run, error = await self.attempt(
+            session, item_id=item_id, start_date=start_date, end_date=end_date
+        )
+        if error is not None:
+            raise error
+        return run
+
+    async def attempt(
+        self,
+        session: Session,
+        *,
+        item_id: str,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> tuple[SyncRun, Exception | None]:
+        """Synchronize one item. A failure is recorded on the run and returned, not raised."""
         run = SyncRun(provider=self.provider.name, item_id=item_id, status="running")
         session.add(run)
         session.commit()
@@ -89,7 +105,7 @@ class SyncService:
             run.error = None
             session.commit()
             session.refresh(run)
-            return run
+            return run, None
         except Exception as exc:
             session.rollback()
             failed = session.get(SyncRun, run.id)
@@ -100,7 +116,8 @@ class SyncService:
             failed.finished_at = datetime.now(UTC)
             failed.error = self._safe_error(exc)
             session.commit()
-            raise
+            session.refresh(failed)
+            return failed, exc
 
     def _upsert_account(self, session: Session, provider_account) -> Account:
         statement = (
