@@ -1,6 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import { delay, http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { MonthProjection } from '../api/types'
 import { emptySummary, makeByCategory, makeComparison, makeSummary } from '../test/fixtures'
 import { renderApp, SEPTEMBER } from '../test/render'
 import { server } from '../test/server'
@@ -318,6 +319,115 @@ describe('DashboardPage', () => {
 
       await screen.findByRole('heading', { name: 'Nenhuma transação' })
       expect(requested).toBe(false)
+    })
+  })
+
+  describe('month-end projection', () => {
+    const PROJECTION = '/api/analytics/month-projection'
+    const projection: MonthProjection = {
+      currency: 'BRL',
+      method: 'linear_daily_average',
+      as_of: '2026-10-10',
+      month: { start_date: '2026-10-01', end_date: '2026-10-31' },
+      days_elapsed: 10,
+      days_in_month: 31,
+      days_remaining: 21,
+      spent_so_far: '1900.00',
+      recurring_so_far: '1800.00',
+      variable_so_far: '100.00',
+      variable_daily_average: '10.00',
+      recurring_basis: { start_date: '2026-09-01', end_date: '2026-09-30' },
+      recurring_expected: '1840.00',
+      recurring_remaining: '40.00',
+      projected_variable: '310.00',
+      projected_total: '2150.00',
+    }
+    const loaded = [
+      http.get(SUMMARY, () => HttpResponse.json(makeSummary())),
+      http.get(BY_CATEGORY, () => HttpResponse.json(makeByCategory())),
+    ]
+
+    beforeEach(() => {
+      // Only the clock is faked, so "today" and the current month are fixed.
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date(2026, 9, 10, 9, 0))
+    })
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('shows the estimate, says it is one and lists its premises', async () => {
+      let asOf: string | null = null
+      server.use(
+        ...loaded,
+        http.get(PROJECTION, ({ request }) => {
+          asOf = new URL(request.url).searchParams.get('as_of')
+          return HttpResponse.json(projection)
+        }),
+      )
+      renderApp('/')
+
+      expect(await screen.findByText('R$ 2.150,00')).toBeInTheDocument()
+      expect(asOf).toBe('2026-10-10')
+      expect(screen.getByText('Gasto projetado até 31/10/2026')).toBeInTheDocument()
+      expect(screen.getByText(/É uma estimativa, não um valor garantido/)).toHaveTextContent(
+        'média diária dos 10 dia(s) já decorridos nos 21 dia(s) restantes',
+      )
+      for (const [label, value] of [
+        ['Gasto até 10/10/2026', 'R$ 1.900,00'],
+        ['Média diária do gasto variável', 'R$ 10,00'],
+        ['Gasto variável projetado', 'R$ 310,00'],
+        ['Recorrentes ainda esperados (base: mês anterior)', 'R$ 40,00'],
+      ] as const) {
+        expect(screen.getByText(label).nextElementSibling).toHaveTextContent(value)
+      }
+    })
+
+    it('says so when nothing is flagged as recurring', async () => {
+      server.use(
+        ...loaded,
+        http.get(PROJECTION, () =>
+          HttpResponse.json({
+            ...projection,
+            recurring_so_far: '0.00',
+            recurring_basis: null,
+            recurring_expected: '0.00',
+            recurring_remaining: '0.00',
+          }),
+        ),
+      )
+      renderApp('/')
+
+      expect((await screen.findByText('Gastos recorrentes')).nextElementSibling).toHaveTextContent(
+        'Nenhum marcado',
+      )
+      expect(screen.queryByText(/Recorrentes ainda esperados/)).not.toBeInTheDocument()
+    })
+
+    it('is shown only for the current month', async () => {
+      let requested = false
+      server.use(
+        ...loaded,
+        http.get(PROJECTION, () => {
+          requested = true
+          return HttpResponse.json(projection)
+        }),
+      )
+      renderApp('/?period=previous-month')
+
+      await screen.findByText('R$ 3.649,94')
+      await screen.findByRole('list', { name: 'Totais comparados' })
+      expect(requested).toBe(false)
+      expect(screen.queryByText('Projeção de fechamento do mês')).not.toBeInTheDocument()
+    })
+
+    it('keeps the summary when the projection fails', async () => {
+      server.use(...loaded, http.get(PROJECTION, () => new HttpResponse(null, { status: 422 })))
+      renderApp('/')
+
+      expect(await screen.findByText('Não foi possível carregar a projeção.')).toBeInTheDocument()
+      expect(screen.getByText('R$ 3.649,94')).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
   })
 })
