@@ -15,6 +15,7 @@ Os testes do backend rodam contra PostgreSQL real, sem SQLite. Cada execução c
 - filtros de período (limites inclusivos, períodos abertos e vazios);
 - busca e filtros de transações: texto literal sem distinção de maiúsculas, conta, categoria e tipo, combinados entre si e com a paginação;
 - débitos, créditos e transferências separados corretamente;
+- insights por regras: limiares exatos (R$ 50,00 e 20%), cada tipo de insight, categoria nova sem percentual e resultado idêntico ao da comparação de períodos;
 - comparação com o período anterior equivalente: meses inteiros contra meses inteiros, demais intervalos contra o mesmo número de dias, variação absoluta exata e percentual nulo quando a base é zero;
 - dinheiro: centavos exatos, valores grandes e rejeição de float, NaN, infinito e frações de centavo;
 - constraints, chaves estrangeiras e unicidade;
