@@ -1,9 +1,16 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { errorMessage, hasStatus } from '../api/client'
-import { askCopilot } from '../api/copilot'
-import type { CopilotAnswer, CopilotEvidence, CopilotStatus, DateRange } from '../api/types'
+import { askCopilot, getCopilotStatus } from '../api/copilot'
+import { queryKeys } from '../api/queryKeys'
+import type {
+  CopilotAnswer,
+  CopilotEvidence,
+  CopilotStatus,
+  CopilotStatusInfo,
+  DateRange,
+} from '../api/types'
 import { Button } from '../components/Button'
 import { PageHeader } from '../components/PageHeader'
 import { SectionHeading } from '../components/SectionHeading'
@@ -26,12 +33,30 @@ function range(period: DateRange): string {
   return `${formatLocalDate(period.start_date)} – ${formatLocalDate(period.end_date)}`
 }
 
-function failure(error: unknown): string {
+// Where the question and the queried data go. Shown before the user asks anything.
+function destination(info: CopilotStatusInfo | undefined): string | null {
+  if (!info) return null
+  if (!info.configured) return 'O Copilot não está configurado no backend.'
+  if (info.provider === 'ollama' && info.local) {
+    return `A pergunta e os dados consultados são processados neste computador, pelo Ollama (${info.model}). Nada é enviado para fora.`
+  }
+  if (info.provider === 'ollama') {
+    return `A pergunta e os dados consultados são enviados ao Ollama em outro computador da rede (${info.model}).`
+  }
+  return `A pergunta e os dados consultados são enviados à API da Anthropic (${info.model}).`
+}
+
+function failure(error: unknown, info: CopilotStatusInfo | undefined): string {
+  const ollama = info?.provider === 'ollama'
   if (hasStatus(error, 503)) {
-    return 'O Copilot não está configurado no backend (ANTHROPIC_API_KEY).'
+    return ollama
+      ? `O modelo ${info.model} não está instalado no Ollama ou não aceita ferramentas. Rode "ollama pull ${info.model}" e tente de novo.`
+      : 'O Copilot não está configurado no backend (COPILOT_PROVIDER e, para a Anthropic, ANTHROPIC_API_KEY).'
   }
   if (hasStatus(error, 502)) {
-    return 'O modelo de IA não respondeu. Seus dados não foram afetados; tente novamente.'
+    return ollama
+      ? 'O Ollama não respondeu. Confira se ele está aberto e tente novamente; seus dados não foram afetados.'
+      : 'O modelo de IA não respondeu. Seus dados não foram afetados; tente novamente.'
   }
   return errorMessage(error)
 }
@@ -52,6 +77,11 @@ export function CopilotPage() {
   const [question, setQuestion] = useState('')
   const [asked, setAsked] = useState('')
   const ask = useMutation({ mutationFn: (text: string) => askCopilot(text, today()) })
+  const status = useQuery({
+    queryKey: queryKeys.copilotStatus(),
+    queryFn: ({ signal }) => getCopilotStatus(signal),
+  })
+  const note = destination(status.data)
   const text = question.trim()
 
   function submit(event: FormEvent) {
@@ -84,9 +114,7 @@ export function CopilotPage() {
           <Button type="submit" disabled={!text || ask.isPending}>
             Perguntar
           </Button>
-          <p className="text-xs text-ink-soft">
-            A pergunta e os dados consultados são enviados ao modelo de IA (Anthropic).
-          </p>
+          {note && <p className="text-xs text-ink-soft">{note}</p>}
         </div>
       </form>
 
@@ -106,11 +134,17 @@ export function CopilotPage() {
 
       <div aria-live="polite" className="mt-8">
         {ask.isPending ? (
-          <LoadingState label="Consultando seus dados…" />
+          <LoadingState
+            label={
+              status.data?.provider === 'ollama'
+                ? 'Consultando seus dados… Um modelo local pode levar um minuto ou mais.'
+                : 'Consultando seus dados…'
+            }
+          />
         ) : ask.isError ? (
           <div role="alert" className="border-l-2 border-danger pl-4">
             <p className="text-sm font-semibold text-danger">O Copilot não respondeu</p>
-            <p className="mt-1 max-w-md text-sm">{failure(ask.error)}</p>
+            <p className="mt-1 max-w-md text-sm">{failure(ask.error, status.data)}</p>
             <Button variant="secondary" className="mt-4" onClick={() => ask.mutate(asked)}>
               Tentar novamente
             </Button>

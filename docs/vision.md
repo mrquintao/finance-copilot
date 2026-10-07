@@ -155,7 +155,7 @@ Objetivo:
 ### Entregas
 
 - [x] Endpoint de chat (`POST /copilot/ask`, uma pergunta por requisição).
-- [x] Integração com LLM via API (atrás de `LLMProvider`).
+- [x] Integração com LLM via API (atrás de `LLMProvider`): Ollama local por padrão, Anthropic opcional.
 - [x] Tool calling.
 - [x] Ferramentas de analytics para o LLM (somente leitura).
 - [ ] Histórico de conversa.

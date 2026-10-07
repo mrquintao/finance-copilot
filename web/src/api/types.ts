@@ -164,6 +164,14 @@ export interface PeriodComparison {
 
 export type CopilotStatus = 'answered' | 'ungrounded' | 'refused' | 'incomplete'
 
+/** Which model serves the Copilot. `local` means data does not leave this machine. */
+export interface CopilotStatusInfo {
+  configured: boolean
+  provider: 'ollama' | 'anthropic' | null
+  model: string | null
+  local: boolean
+}
+
 /** Filters for the Transactions screen that reproduce the query behind a fact. */
 export interface TransactionsLink {
   start_date: LocalDate

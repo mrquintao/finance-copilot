@@ -377,7 +377,8 @@ def test_model_failures_are_reported_without_details(client, monkeypatch, ledger
     assert response.json() == {"detail": "Copilot model request failed (500)."}
 
 
-def test_missing_api_key_returns_503(client, monkeypatch):
+def test_anthropic_without_an_api_key_returns_503(client, monkeypatch):
+    monkeypatch.setenv("COPILOT_PROVIDER", "anthropic")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "")
 
     response = client.post(ASK, json={"question": "Quanto gastei?", "today": "2026-10-07"})
