@@ -129,6 +129,7 @@ Core financeiro:
 | `GET /transactions` | Lista paginada e filtrável |
 | `GET /transactions/{id}` | Detalhe da transação |
 | `GET /categories` | Categorias |
+| `GET /accounts` | Contas agrupadas por instituição, com estado da sincronização e contagem de transações |
 | `GET /analytics/spending-summary` | Gastos, receitas e contagens |
 | `GET /analytics/spending-by-category` | Gastos por categoria |
 
