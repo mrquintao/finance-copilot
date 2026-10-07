@@ -131,6 +131,7 @@ Core financeiro:
 | `GET /categories` | Categorias |
 | `GET /analytics/spending-summary` | Gastos, receitas e contagens |
 | `GET /analytics/spending-by-category` | Gastos por categoria |
+| `GET /analytics/period-comparison` | Gastos, receitas, contagem e categorias contra o período anterior equivalente |
 
 Open Finance:
 

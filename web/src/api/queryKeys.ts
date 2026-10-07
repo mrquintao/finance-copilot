@@ -5,6 +5,7 @@ import type { Period } from '../lib/period'
 export const queryKeys = {
   summary: (period: Period) => ['analytics', 'summary', period.start, period.end] as const,
   byCategory: (period: Period) => ['analytics', 'by-category', period.start, period.end] as const,
+  comparison: (period: Period) => ['analytics', 'comparison', period.start, period.end] as const,
   transactions: (period: Period) => ['transactions', 'list', period.start, period.end] as const,
   transaction: (id: string) => ['transactions', 'detail', id] as const,
   syncRuns: () => ['sync', 'runs'] as const,

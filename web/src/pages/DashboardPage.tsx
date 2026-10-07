@@ -5,6 +5,7 @@ import { queryKeys } from '../api/queryKeys'
 import type { CategorySpending, SpendingSummary } from '../api/types'
 import { CategoryChart } from '../components/CategoryChart'
 import { PageHeader } from '../components/PageHeader'
+import { PeriodComparison } from '../components/PeriodComparison'
 import { PeriodFilter } from '../components/PeriodFilter'
 import { SectionHeading } from '../components/SectionHeading'
 import { EmptyState } from '../components/states/EmptyState'
@@ -44,7 +45,10 @@ export function DashboardPage() {
       ) : summary.data.transaction_count === 0 ? (
         <EmptyState />
       ) : (
-        <Dashboard summary={summary.data} categories={categories.data.items} />
+        <>
+          <Dashboard summary={summary.data} categories={categories.data.items} />
+          <PeriodComparison period={period} />
+        </>
       )}
     </>
   )

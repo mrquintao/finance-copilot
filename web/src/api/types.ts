@@ -78,6 +78,45 @@ export interface SpendingByCategory {
   items: CategorySpending[]
 }
 
+export type Direction = 'up' | 'down' | 'equal'
+
+export interface DateRange {
+  start_date: LocalDate
+  end_date: LocalDate
+}
+
+/** `change` is a signed decimal string; `percent_change` is null when the base is zero. */
+export interface MoneyChange {
+  current: Money
+  previous: Money
+  change: string
+  percent_change: string | null
+  direction: Direction
+}
+
+export interface CountChange {
+  current: number
+  previous: number
+  change: number
+  percent_change: string | null
+  direction: Direction
+}
+
+export interface CategoryChange extends MoneyChange {
+  category_id: UUID | null
+  category: string
+}
+
+export interface PeriodComparison {
+  currency: 'BRL'
+  period: DateRange
+  previous_period: DateRange
+  spending: MoneyChange
+  income: MoneyChange
+  transaction_count: CountChange
+  categories: CategoryChange[]
+}
+
 export interface ConnectTokenResponse {
   connect_token: string
 }

@@ -14,6 +14,7 @@ Os testes do backend rodam contra PostgreSQL real, sem SQLite. Cada execução c
 - listagem, detalhe e paginação estável de transações;
 - filtros de período (limites inclusivos, períodos abertos e vazios);
 - débitos, créditos e transferências separados corretamente;
+- comparação com o período anterior equivalente: meses inteiros contra meses inteiros, demais intervalos contra o mesmo número de dias, variação absoluta exata e percentual nulo quando a base é zero;
 - dinheiro: centavos exatos, valores grandes e rejeição de float, NaN, infinito e frações de centavo;
 - constraints, chaves estrangeiras e unicidade;
 - migrations reversíveis (downgrade e upgrade) e seed idempotente;

@@ -1,6 +1,6 @@
 import type { Period } from '../lib/period'
 import { request } from './client'
-import type { SpendingByCategory, SpendingSummary } from './types'
+import type { PeriodComparison, SpendingByCategory, SpendingSummary } from './types'
 
 const periodQuery = (period: Period) => ({ start_date: period.start, end_date: period.end })
 
@@ -13,4 +13,8 @@ export function getSpendingByCategory(
   signal?: AbortSignal,
 ): Promise<SpendingByCategory> {
   return request('/analytics/spending-by-category', { query: periodQuery(period), signal })
+}
+
+export function getPeriodComparison(period: Period, signal?: AbortSignal): Promise<PeriodComparison> {
+  return request('/analytics/period-comparison', { query: periodQuery(period), signal })
 }

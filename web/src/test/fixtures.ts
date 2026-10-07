@@ -1,4 +1,6 @@
 import type {
+  MoneyChange,
+  PeriodComparison,
   SpendingByCategory,
   SpendingSummary,
   SyncRun,
@@ -88,6 +90,33 @@ export function makeSyncRun(overrides: Partial<SyncRun> = {}): SyncRun {
     transactions_created: 7,
     transactions_updated: 3,
     error: null,
+    ...overrides,
+  }
+}
+
+const unchanged: MoneyChange = {
+  current: '0.00',
+  previous: '0.00',
+  change: '0.00',
+  percent_change: null,
+  direction: 'equal',
+}
+
+export function makeComparison(overrides: Partial<PeriodComparison> = {}): PeriodComparison {
+  return {
+    currency: 'BRL',
+    period: { start_date: '2026-09-01', end_date: '2026-09-30' },
+    previous_period: { start_date: '2026-08-01', end_date: '2026-08-31' },
+    spending: unchanged,
+    income: unchanged,
+    transaction_count: {
+      current: 0,
+      previous: 0,
+      change: 0,
+      percent_change: null,
+      direction: 'equal',
+    },
+    categories: [],
     ...overrides,
   }
 }
