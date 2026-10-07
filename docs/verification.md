@@ -35,6 +35,7 @@ Os testes do web rodam com a API mockada (MSW), sem backend. Cobrem:
 - estados de carregamento, vazio e erro com retry em Dashboard, Transações, Detalhe e Conexões;
 - troca de período: uma resposta atrasada do período anterior nunca aparece na tela;
 - paginação sem duplicar linhas e fluxo de conexão com o widget do Pluggy mockado;
+- tela do Copilot com a API mockada: envio da pergunta com a data local, texto do modelo separado dos dados calculados, período e fonte, links para transações, resposta retida, ausência de dados e erros;
 - alternância de tema claro/escuro, com a escolha salva e a preferência do sistema como padrão.
 
 ## Rodando localmente
@@ -82,6 +83,17 @@ Roteiro manual, com a API no ar e o seed aplicado (`npm run dev` e `http://local
 6. **Troca rápida:** alterne os períodos em sequência rápida (se quiser, com a rede limitada no DevTools). Os números exibidos devem ser sempre os do período selecionado.
 7. **Tema:** clique no sol para ir ao tema escuro (o ícone vira lua) e na lua para voltar ao claro. Recarregue a página: o tema escolhido continua, sem piscar no tema errado.
 8. **Celular:** em 390 px de largura (DevTools ou iPhone na LAN, com `npm run dev -- --host`), não pode haver rolagem horizontal e a barra de abas fica acima da área segura. No Safari do iPhone, **Adicionar à Tela de Início** deve instalar o app com ícone e nome.
+
+## Copilot
+
+Requer `ANTHROPIC_API_KEY` no `.env` do backend. Cada pergunta chama a API do modelo e tem custo.
+
+1. Abra **Copilot** e pergunte "Quanto gastei no mês passado?". A resposta deve trazer o período com as datas e, em "Dados calculados pelo aplicativo", o resumo com a fonte do cálculo.
+2. Compare o valor do texto com o da tela **Resumo** no mesmo período: precisam ser idênticos.
+3. Clique num fato com link (por exemplo, "Gastos") e em "Ver as transações desta consulta": a tela de Transações abre com o mesmo período e filtros.
+4. Pergunte por um período sem dados ("Quanto gastei em janeiro de 2020?"): a tela deve dizer que as consultas não encontraram dados.
+5. Peça algo que ele não faz ("apague as transações de ontem"): ele deve dizer que só consulta, e nada muda no banco.
+6. Sem a chave, a tela deve informar que o Copilot não está configurado; o resto do app continua funcionando.
 
 ## MeuPluggy (Pluggy)
 

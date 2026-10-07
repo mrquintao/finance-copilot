@@ -13,6 +13,7 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from app.analytics.schemas import DateRange
+from app.copilot.evidence import build_evidence
 from app.copilot.grounding import ungrounded_amounts
 from app.copilot.schemas import CopilotAnswer, ToolEvidence
 from app.copilot.tools import TOOL_SPECS, run_tool
@@ -74,7 +75,13 @@ async def ask(session: Session, llm: LLMProvider, question: str, today: date) ->
     def finish(status: str, answer: str) -> CopilotAnswer:
         # Counts only: questions, answers and tool results are financial data.
         logger.info("Copilot finished (%s) with %d tool call(s).", status, len(evidence))
-        return CopilotAnswer(status=status, answer=answer, periods=periods, evidence=evidence)
+        return CopilotAnswer(
+            status=status,
+            answer=answer,
+            periods=periods,
+            no_data=bool(evidence) and not any(item.has_data for item in evidence),
+            evidence=evidence,
+        )
 
     for _ in range(MAX_STEPS):
         turn = await llm.respond(system=SYSTEM_PROMPT, tools=TOOL_SPECS, conversation=conversation)
@@ -111,11 +118,8 @@ async def ask(session: Session, llm: LLMProvider, question: str, today: date) ->
             if period is not None and period not in periods:
                 periods.append(period)
             evidence.append(
-                ToolEvidence(
-                    tool=call.name,
-                    arguments=outcome.arguments,
-                    period=period,
-                    result=outcome.result,
+                build_evidence(
+                    session, call.name, outcome.arguments, outcome.period, outcome.result
                 )
             )
         conversation.append(ToolResults(tuple(results)))

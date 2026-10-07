@@ -160,7 +160,7 @@ Objetivo:
 - [x] Ferramentas de analytics para o LLM (somente leitura).
 - [ ] Histórico de conversa.
 - [ ] Controles de privacidade.
-- [ ] Respostas explicáveis e baseadas em dados retornados pelas tools.
+- [x] Respostas explicáveis e baseadas em dados retornados pelas tools (evidências com período, fonte e links para as transações).
 
 ---
 
