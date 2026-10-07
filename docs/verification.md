@@ -20,7 +20,8 @@ Os testes do backend rodam contra PostgreSQL real, sem SQLite. Cada execução c
 - comparação com o período anterior equivalente: meses inteiros contra meses inteiros, demais intervalos contra o mesmo número de dias, variação absoluta exata e percentual nulo quando a base é zero;
 - dinheiro: centavos exatos, valores grandes e rejeição de float, NaN, infinito e frações de centavo;
 - constraints, chaves estrangeiras e unicidade;
-- migrations reversíveis (downgrade e upgrade) e seed idempotente;
+- migrations reversíveis (downgrade e upgrade) e seed de demonstração idempotente;
+- isolamento do dataset de demonstração: o `clean-demo` remove só a conta e as transações fictícias e preserva contas e transações de provedor, `sync_runs` e categorias; o seed recusa rodar ao lado de contas de provedor;
 - contrato OpenAPI;
 - auditoria de qualidade dos dados (`audit-data`): cada verificação, os limites exatos, relatório sem conteúdo de transações e a garantia de que nada é modificado;
 - visão de contas: agrupamento por instituição, estado derivado da última sincronização do Item e nenhum identificador do provedor na resposta;
@@ -44,7 +45,6 @@ Com `.env` configurado (veja o README) e o banco disponível, na raiz do reposit
 
 ```sh
 python scripts/dev.py migrate
-python scripts/dev.py seed
 python -m alembic -c backend/alembic.ini check
 python scripts/dev.py lint
 python -m ruff format --check backend scripts
@@ -52,13 +52,19 @@ python scripts/dev.py test
 python scripts/dev.py api
 ```
 
-Rodar o seed duas vezes deve inserir 126 transações na primeira e nenhuma na segunda.
+O roteiro abaixo usa o dataset de demonstração e vale para um banco **sem dados reais**. Num banco com contas do MeuPluggy, o `seed-demo` recusa rodar; não misture os dois (veja "Dados de demonstração" no README).
+
+```sh
+python scripts/dev.py seed-demo
+```
+
+Rodar o `seed-demo` duas vezes deve inserir 126 transações na primeira e nenhuma na segunda. Ao terminar, `python scripts/dev.py clean-demo` remove exatamente essas 126 transações e a conta de demonstração.
 
 Com a API no ar, confira manualmente:
 
 - `GET /health` responde e indica o banco disponível;
 - `/docs` abre a documentação interativa;
-- setembro/2026 no seed: gastos de **R$ 3.649,94**, receitas de **R$ 8.150,00** e 21 transações; a soma por categoria fecha exatamente com o total de gastos;
+- setembro/2026 no dataset de demonstração: gastos de **R$ 3.649,94**, receitas de **R$ 8.150,00** e 21 transações; a soma por categoria fecha exatamente com o total de gastos;
 - UUID inexistente retorna `404`; paginação ou período inválido retorna `422`.
 
 ## Cliente web
@@ -73,7 +79,7 @@ npm run test
 npm run build
 ```
 
-Roteiro manual, com a API no ar e o seed aplicado (`npm run dev` e `http://localhost:5173`):
+Roteiro manual, com a API no ar e o dataset de demonstração aplicado num banco sem dados reais (`npm run dev` e `http://localhost:5173`):
 
 1. **Resumo:** selecione **Personalizado** de 01/09/2026 a 30/09/2026. Devem aparecer gastos de **R$ 3.649,94**, receitas de **R$ 8.150,00**, 21 transações e o gráfico por categoria com a lista de valores exatos abaixo.
 2. **Período:** passe por **Mês atual**, **Mês anterior** e **Últimos 3 meses** e confira as datas exibidas e a URL (`?period=…`). Um intervalo personalizado invertido deve bloquear o botão **Aplicar**.
