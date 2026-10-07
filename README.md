@@ -132,6 +132,7 @@ Core financeiro:
 | `GET /accounts` | Contas agrupadas por instituição, com estado da sincronização e contagem de transações |
 | `GET /analytics/spending-summary` | Gastos, receitas e contagens |
 | `GET /analytics/spending-by-category` | Gastos por categoria |
+| `GET /analytics/period-comparison` | Gastos, receitas, contagem e categorias contra o período anterior equivalente |
 
 Open Finance:
 

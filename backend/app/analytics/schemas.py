@@ -1,8 +1,9 @@
 from datetime import date
-from typing import Literal
+from decimal import Decimal
+from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, PlainSerializer
 
 from app.core.money import Money
 
@@ -31,3 +32,51 @@ class SpendingByCategory(BaseModel):
     period_start: date | None
     period_end: date | None
     items: list[CategorySpending]
+
+
+def _signed(value: Decimal) -> str:
+    # Avoid "-0.00" for a zero difference.
+    return format(value if value else Decimal("0.00"), ".2f")
+
+
+# A difference between two Money values: exact, two decimals, may be negative.
+SignedMoney = Annotated[Decimal, PlainSerializer(_signed, return_type=str)]
+# Percent change with one decimal ("12.5", "-100.0"), or null when the base is zero.
+Percent = Annotated[Decimal, PlainSerializer(lambda value: format(value, ".1f"), return_type=str)]
+Direction = Literal["up", "down", "equal"]
+
+
+class DateRange(BaseModel):
+    start_date: date
+    end_date: date
+
+
+class MoneyChange(BaseModel):
+    current: Money
+    previous: Money
+    change: SignedMoney
+    percent_change: Percent | None
+    direction: Direction
+
+
+class CountChange(BaseModel):
+    current: int
+    previous: int
+    change: int
+    percent_change: Percent | None
+    direction: Direction
+
+
+class CategoryChange(MoneyChange):
+    category_id: UUID | None
+    category: str
+
+
+class PeriodComparison(BaseModel):
+    currency: Literal["BRL"] = "BRL"
+    period: DateRange
+    previous_period: DateRange
+    spending: MoneyChange
+    income: MoneyChange
+    transaction_count: CountChange
+    categories: list[CategoryChange]

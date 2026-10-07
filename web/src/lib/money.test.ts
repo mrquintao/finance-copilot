@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { formatBRL, INVALID_MONEY, isMoney } from './money'
+import {
+  formatBRL,
+  formatPercentChange,
+  formatSignedBRL,
+  INVALID_MONEY,
+  isMoney,
+} from './money'
 
 // Intl separates the symbol from the digits with a non-breaking space.
 const brl = (digits: string) => `R$${String.fromCharCode(0xa0)}${digits}`
@@ -32,5 +38,40 @@ describe('isMoney', () => {
     expect(isMoney('1.00')).toBe(true)
     expect(isMoney(1)).toBe(false)
     expect(isMoney(null)).toBe(false)
+  })
+})
+
+describe('formatSignedBRL', () => {
+  it('always shows the sign of a difference', () => {
+    expect(formatSignedBRL('15.00')).toBe(`+${brl('15,00')}`)
+    expect(formatSignedBRL('-60.00')).toBe(`\u2212${brl('60,00')}`)
+    expect(formatSignedBRL('-1234567890123456.78')).toBe(`\u2212${brl('1.234.567.890.123.456,78')}`)
+  })
+
+  it('shows zero without a sign', () => {
+    expect(formatSignedBRL('0.00')).toBe(brl('0,00'))
+    expect(formatSignedBRL('-0.00')).toBe(brl('0,00'))
+  })
+
+  it('refuses malformed input', () => {
+    for (const value of ['', '+1.00', '1.5', '--1.00', 'abc']) {
+      expect(formatSignedBRL(value)).toBe(INVALID_MONEY)
+    }
+  })
+})
+
+describe('formatPercentChange', () => {
+  it('formats the backend percentage with sign and decimal comma', () => {
+    expect(formatPercentChange('7.5')).toBe('+7,5%')
+    expect(formatPercentChange('-100.0')).toBe('\u2212100,0%')
+    expect(formatPercentChange('200.0')).toBe('+200,0%')
+    expect(formatPercentChange('0.0')).toBe('0,0%')
+    expect(formatPercentChange('-0.0')).toBe('0,0%')
+  })
+
+  it('refuses malformed input', () => {
+    for (const value of ['', '7', '7.55', '7,5', 'NaN']) {
+      expect(formatPercentChange(value)).toBe('—')
+    }
   })
 })
