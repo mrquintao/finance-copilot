@@ -1,5 +1,0 @@
-// Copy to Local.xcconfig (ignored). URL only; never put secrets here.
-// Simulator: localhost. Physical iPhone: your computer's LAN address.
-API_BASE_URL = http:$(SLASH)$(SLASH)192.168.1.10:8000
-// Optional for physical-device signing:
-// DEVELOPMENT_TEAM = YOUR_APPLE_TEAM_ID

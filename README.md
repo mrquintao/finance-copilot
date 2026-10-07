@@ -1,17 +1,17 @@
 # Finance Copilot
 
-Aplicativo pessoal de finanças para iPhone com backend FastAPI e PostgreSQL. O **MVP 0.2** mantém o core financeiro do MVP 0.1 e adiciona sincronização Open Finance via Pluggy: conexão de instituição, importação de contas e transações, normalização, deduplicação e histórico de sincronizações.
+Aplicativo pessoal de finanças com cliente web (React, instalável no iPhone como PWA) e backend FastAPI + PostgreSQL. O **MVP 0.2** entregou o core financeiro e a sincronização Open Finance via Pluggy. O **MVP 0.3 — Produção**, em andamento, começa pelo cliente web em `web/`, que substitui o app iOS.
 
 O roadmap completo está em [docs/vision.md](docs/vision.md).
 
 ## Arquitetura
 
 ```text
-iPhone: SwiftUI + Swift Charts
-        |              |
-        | REST/JSON    | abre fluxo de conexão
-        v              v
-      FastAPI <---- /sync/connect
+Navegador / PWA: React + TypeScript (web/)
+        |
+        | REST/JSON em /api (mesma origem)
+        v
+      FastAPI
         |
         +-- transactions / categories / analytics
         +-- sync / sync_runs
@@ -23,7 +23,9 @@ iPhone: SwiftUI + Swift Charts
                  +-- PluggyProvider -> Pluggy / Open Finance
 ```
 
-As credenciais do Pluggy ficam **somente no backend**. O iOS recebe apenas a URL do próprio Finance Copilot e abre o fluxo de conexão servido pelo backend. O banco continua sendo a fonte de verdade para contas e transações normalizadas.
+As credenciais do Pluggy ficam **somente no backend**. O cliente web recebe apenas um Connect Token de curta duração, gerado pelo backend, e abre o widget do Pluggy com ele. O banco continua sendo a fonte de verdade para contas e transações normalizadas.
+
+O cliente web chama a API sempre em `/api`, na própria origem. Em desenvolvimento, o Vite faz o proxy para o backend, então o backend não habilita CORS.
 
 ## Escopo implementado
 
@@ -34,7 +36,7 @@ As credenciais do Pluggy ficam **somente no backend**. O iOS recebe apenas a URL
 - Dinheiro com `Decimal`/`NUMERIC(18,2)`, nunca `float`.
 - API de transações, filtros, paginação e detalhe.
 - Analytics de gastos/receitas e gastos por categoria.
-- SwiftUI + Swift Charts com dashboard, transações e detalhe.
+- Dashboard, lista de transações e detalhe no cliente.
 - Seed determinístico com 126 transações de abril a setembro de 2026.
 
 ### MVP 0.2 — Open Finance
@@ -50,13 +52,22 @@ As credenciais do Pluggy ficam **somente no backend**. O iOS recebe apenas a URL
 - Deduplicação/upsert de transações por `(account_id, external_id)`.
 - Histórico em `sync_runs`, incluindo contagens e falhas.
 - Retry de erros transitórios/429/5xx e renovação de API key após 401.
-- Tela **Conexões** no iOS para conectar instituição e sincronizar novamente.
+- Tela **Conexões** para conectar instituição e sincronizar novamente.
+
+### MVP 0.3 — Produção (em andamento)
+
+- Cliente web em `web/`: React + TypeScript (strict) + Vite, React Router, TanStack Query, Recharts e Tailwind.
+- Dashboard com filtro de período (mês atual, mês anterior, últimos 3 meses e personalizado), cards e gráfico por categoria.
+- Transações paginadas e detalhe em rota própria (link compartilhável).
+- Conexões com o widget Pluggy Connect, "Sincronizar novamente" e histórico de sincronizações.
+- Manifest de PWA e ícones para "Adicionar à tela de início" (sem service worker por enquanto).
+- Ainda **sem autenticação**: ela é a próxima entrega deste marco.
 
 ## Requisitos
 
 - Python **3.12+**.
 - PostgreSQL **18** ou Docker + Docker Compose v2.
-- Para executar o app iOS: macOS/Xcode ou CI macOS. O backend pode ser desenvolvido no Windows.
+- Node.js **LTS** e npm, para o cliente web.
 - Para Open Finance real: aplicação criada no Pluggy e `PLUGGY_CLIENT_ID`/`PLUGGY_CLIENT_SECRET`.
 
 ## Configuração
@@ -69,7 +80,7 @@ PLUGGY_CLIENT_SECRET=seu_client_secret
 PLUGGY_BASE_URL=https://api.pluggy.ai
 ```
 
-Nunca coloque essas credenciais no projeto iOS, no Git ou em screenshots/logs.
+Nunca coloque essas credenciais no cliente web, no Git ou em screenshots/logs.
 
 Variáveis principais:
 
@@ -125,7 +136,7 @@ Open Finance:
 
 | Método/rota | Função |
 | --- | --- |
-| `GET /sync/connect` | Página mobile para abrir o Pluggy Connect |
+| `GET /sync/connect` | Página avulsa do Pluggy Connect, usada pelo antigo app iOS |
 | `POST /sync/connect-token` | Gera Connect Token usando credenciais server-side |
 | `POST /sync` | Sincroniza um `item_id` específico |
 | `POST /sync/refresh` | Sincroniza todos os Items já conhecidos |
@@ -149,12 +160,12 @@ As datas são opcionais e inclusivas. Intervalo invertido retorna 422.
 ## Fluxo Open Finance
 
 ```text
-1. iOS -> Conexões -> Conectar instituição
-2. iOS abre GET /sync/connect
+1. Web -> Conexões -> Conectar instituição
+2. Web chama POST /sync/connect-token
 3. Backend gera Connect Token no Pluggy
-4. Pluggy Connect coleta autenticação/consentimento
-5. onSuccess retorna itemId
-6. página chama POST /sync
+4. Widget Pluggy Connect coleta autenticação/consentimento
+5. onSuccess retorna o item
+6. Web chama POST /sync com o item_id
 7. backend busca contas
 8. backend busca transações por conta
 9. normalize -> deduplicate/upsert -> PostgreSQL
@@ -163,22 +174,42 @@ As datas são opcionais e inclusivas. Intervalo invertido retorna 422.
 
 A sincronização aceita apenas contas/transações em BRL no MVP 0.2. Transações `PENDING` são ignoradas; apenas `POSTED` entram no banco. O valor é persistido como magnitude positiva, com `type = debit` ou `credit`, preservando a semântica utilizada pelos analytics existentes.
 
-## Aplicativo iOS
+## Cliente web
 
-Configure `ios/Config/Local.xcconfig` com a URL do backend. Para Simulator no mesmo Mac:
+Com o backend rodando (`scripts/dev.py api`, porta 8000), em outro terminal:
 
-```text
-API_BASE_URL = http:$(SLASH)$(SLASH)localhost:8000
+```sh
+cd web
+npm install
+npm run dev
 ```
 
-Para um iPhone físico acessando o backend no Windows/Mac da mesma LAN:
+Abra `http://localhost:5173`. O Vite repassa `/api/*` para `http://127.0.0.1:8000`; para apontar para outro endereço, copie `web/.env.example` para `web/.env` e ajuste `API_PROXY_TARGET`.
 
-1. use o IP LAN do computador, por exemplo `http:$(SLASH)$(SLASH)192.168.1.10:8000`;
-2. defina `BACKEND_BIND=0.0.0.0`;
-3. permita a porta no firewall apenas na rede confiável;
-4. abra a aba **Conexões** no app.
+| Script | Função |
+| --- | --- |
+| `npm run dev` | Servidor de desenvolvimento com proxy para a API |
+| `npm run build` | Typecheck + build de produção em `web/dist` |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | TypeScript em modo strict |
+| `npm run test` | Vitest + Testing Library, com a API mockada (MSW) |
 
-A aba possui **Conectar instituição** e **Sincronizar agora**. Depois da sincronização, o usuário pode voltar ao Resumo e usar pull-to-refresh.
+Regras do cliente:
+
+- dinheiro chega como string decimal e é formatado em BRL sem virar `number`; a única conversão fica no componente do gráfico, só para a escala;
+- datas `YYYY-MM-DD` são tratadas como datas locais, nunca com `new Date("YYYY-MM-DD")`;
+- o período selecionado fica na URL (`?period=previous-month` ou `?start=…&end=…`);
+- o seed cobre abril a setembro de 2026: use **Mês anterior**, **Últimos 3 meses** ou **Personalizado** se o mês atual estiver vazio.
+
+Para testar em um iPhone na mesma LAN confiável, rode `npm run dev -- --host` e abra `http://<IP do computador>:5173`. O backend continua em `127.0.0.1`, porque só o Vite fala com ele. No Safari, **Compartilhar → Adicionar à Tela de Início** instala o app.
+
+## Código do app iOS
+
+O cliente SwiftUI foi removido da `main` quando o cliente web atingiu a paridade. O último estado dele está na tag [`ios-mvp-0.2`](https://github.com/mrquintao/finance-copilot/tree/ios-mvp-0.2):
+
+```sh
+git checkout ios-mvp-0.2
+```
 
 ## Regras financeiras
 
@@ -193,8 +224,8 @@ A aba possui **Conectar instituição** e **Sincronizar agora**. Depois da sincr
 
 ## Segurança e limites
 
-O Finance Copilot continua sendo um projeto **single-person e sem autenticação própria da API**. Com dados reais, não exponha este backend diretamente à internet até existir autenticação/autorização adequada. Para desenvolvimento com iPhone físico, use apenas LAN confiável; para deployment futuro, use HTTPS e autenticação.
+O Finance Copilot continua sendo um projeto **single-person e sem autenticação própria da API**. Com dados reais, não exponha o backend nem o servidor do Vite à internet até existir autenticação/autorização adequada. Para testar em um iPhone, use apenas LAN confiável; o deploy do MVP 0.3 usará HTTPS, com web e API no mesmo domínio, e autenticação por cookie `httpOnly`.
 
-Segredos ficam no `.env`/secret manager e nunca no iOS. O adapter não registra bodies da Pluggy nem credenciais. Erros persistidos em `sync_runs` são sanitizados. Respostas continuam com `Cache-Control: no-store`.
+Segredos ficam no `.env`/secret manager e nunca no cliente web, que também não guarda nada em `localStorage`/`sessionStorage`. O adapter não registra bodies da Pluggy nem credenciais. Erros persistidos em `sync_runs` são sanitizados. Respostas continuam com `Cache-Control: no-store`.
 
-Ainda fora do MVP 0.2: multiusuário, pagamentos, webhooks de atualização automática, LLM/chat, analytics avançados, recorrência avançada e insights proativos.
+Ainda não implementado: autenticação, deploy e webhooks de atualização automática (os três fazem parte do MVP 0.3), além de multiusuário, pagamentos, LLM/chat, analytics avançados, recorrência avançada e insights proativos.

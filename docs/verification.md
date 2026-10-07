@@ -1,14 +1,13 @@
 # Verificação
 
-Como conferir que o Finance Copilot está funcionando, do backend ao app iOS. A parte automatizada roda no GitHub Actions; o restante é um roteiro manual curto.
+Como conferir que o Finance Copilot está funcionando, do backend ao cliente web. A parte automatizada roda no GitHub Actions; o restante é um roteiro manual curto.
 
 ## Automatizado (CI)
 
 | Workflow | O que verifica |
 | --- | --- |
 | **Backend CI** | `ruff check`, `ruff format --check`, migrations do zero, `alembic check` (modelos x migrations) e a suíte `pytest` contra PostgreSQL 18 |
-| **iOS Tests** | Build do app e testes XCTest no simulador |
-| **iOS UI Screenshot** | Sobe um backend mock e captura a interface no simulador |
+| **Web CI** | `npm ci`, ESLint, typecheck (TypeScript strict), Vitest e build de produção do `web/`, em Node LTS |
 
 Os testes do backend rodam contra PostgreSQL real, sem SQLite. Cada execução cria um schema isolado e o remove ao final. Cobrem:
 
@@ -20,6 +19,15 @@ Os testes do backend rodam contra PostgreSQL real, sem SQLite. Cada execução c
 - migrations reversíveis (downgrade e upgrade) e seed idempotente;
 - contrato OpenAPI;
 - erros e logs sem vazamento de dados financeiros.
+
+Os testes do web rodam com a API mockada (MSW), sem backend. Cobrem:
+
+- formatação de dinheiro em BRL a partir da string decimal, inclusive valores que um float não representa;
+- datas locais `YYYY-MM-DD`, sem deslocamento de dia;
+- filtro de período: presets, virada de ano, fevereiro bissexto, intervalo invertido e leitura da URL;
+- estados de carregamento, vazio e erro com retry em Dashboard, Transações, Detalhe e Conexões;
+- troca de período: uma resposta atrasada do período anterior nunca aparece na tela;
+- paginação sem duplicar linhas e fluxo de conexão com o widget do Pluggy mockado.
 
 ## Rodando localmente
 
@@ -44,25 +52,41 @@ Com a API no ar, confira manualmente:
 - setembro/2026 no seed: gastos de **R$ 3.649,94**, receitas de **R$ 8.150,00** e 21 transações; a soma por categoria fecha exatamente com o total de gastos;
 - UUID inexistente retorna `404`; paginação ou período inválido retorna `422`.
 
-## App iOS (macOS)
+## Cliente web
 
-1. Abra `ios/FinanceCopilot.xcodeproj` no Xcode 16+ e configure a URL do backend conforme o README.
-2. Rode **Product → Test** no scheme `FinanceCopilot`. As fixtures são respostas reais do backend com dados fictícios.
-3. Rode o app e confira o resumo de setembro, o gráfico por categoria, a lista e o detalhe.
-4. Selecione todo o período para testar a paginação e depois um período vazio.
-5. Desligue o backend para conferir a tela de erro e o retry. Troque de período rapidamente para garantir que respostas antigas não sobrescrevem a seleção atual.
-6. Em um iPhone físico, confirme a permissão de rede local. HTTP só é permitido na configuração Debug; Release exige HTTPS.
+Checagens automatizadas, em `web/`:
+
+```sh
+npm ci
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+```
+
+Roteiro manual, com a API no ar e o seed aplicado (`npm run dev` e `http://localhost:5173`):
+
+1. **Resumo:** selecione **Personalizado** de 01/09/2026 a 30/09/2026. Devem aparecer gastos de **R$ 3.649,94**, receitas de **R$ 8.150,00**, 21 transações e o gráfico por categoria com a lista de valores exatos abaixo.
+2. **Período:** passe por **Mês atual**, **Mês anterior** e **Últimos 3 meses** e confira as datas exibidas e a URL (`?period=…`). Um intervalo personalizado invertido deve bloquear o botão **Aplicar**.
+3. **Transações:** com 01/04/2026 a 30/09/2026, a lista mostra "126 transações" e **Carregar mais** leva a 50, 100 e 126 linhas, sem repetição. Abra uma transação, copie a URL e abra-a em outra aba: o detalhe carrega direto.
+4. **Vazio:** escolha um período sem dados (por exemplo, janeiro de 2020) em Resumo e em Transações.
+5. **Erro:** pare o backend e recarregue: cada tela mostra o erro com **Tentar novamente**. Suba o backend e use o botão.
+6. **Troca rápida:** alterne os períodos em sequência rápida (se quiser, com a rede limitada no DevTools). Os números exibidos devem ser sempre os do período selecionado.
+7. **Celular:** em 390 px de largura (DevTools ou iPhone na LAN, com `npm run dev -- --host`), não pode haver rolagem horizontal e a barra de abas fica acima da área segura. No Safari do iPhone, **Adicionar à Tela de Início** deve instalar o app com ícone e nome.
 
 ## Open Finance (Pluggy)
 
 Requer `PLUGGY_CLIENT_ID` e `PLUGGY_CLIENT_SECRET` no `.env` do backend.
 
-1. No app, abra **Conexões** e conecte uma instituição.
-2. Confira que contas e transações aparecem e que `GET /sync/runs` registra a execução com as contagens.
-3. Sincronize de novo: nenhuma transação deve ser duplicada.
+1. No web, abra **Conexões** e clique em **Conectar instituição**. O widget do Pluggy abre; conclua a conexão.
+2. Ao terminar, a importação começa sozinha e o histórico mostra a execução com status e contagens (as mesmas de `GET /sync/runs`).
+3. Clique em **Sincronizar novamente**: a execução nova deve trazer 0 transações novas, sem duplicar nada.
+4. Sem as credenciais do Pluggy, os dois botões devem informar que o Open Finance não está configurado.
 
 ## Limitações conhecidas
 
 - `docker compose` não é exercitado no CI; o CI usa o PostgreSQL como serviço do GitHub Actions.
 - Escopo de uso pessoal: um usuário, apenas BRL e API de leitura (sem autenticação, edição ou importação CSV).
+- O fluxo real do Pluggy Connect não é automatizado: nos testes o widget é mockado, e a conexão com uma instituição só é conferida manualmente.
+- O web ainda não tem service worker: não funciona offline.
 - A paginação usa offset, o que é adequado ao volume atual. Se o banco mudar durante a navegação, recarregue a lista.

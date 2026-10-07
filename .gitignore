@@ -11,7 +11,9 @@ build/
 dist/
 .local/
 .DS_Store
-DerivedData/
-xcuserdata/
-*.xcuserstate
-ios/Config/Local.xcconfig
+node_modules/
+
+# Instruções locais para agentes de IA (não versionar)
+AGENTS.md
+CLAUDE.md
+.claude/

@@ -1,3 +1,0 @@
-SLASH = /
-API_BASE_URL = https:$(SLASH)$(SLASH)localhost:8000
-#include? "Local.xcconfig"
