@@ -1,7 +1,12 @@
 from datetime import date, datetime
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
+
+from app.sync.diagnostics import ErrorKind, classify_error
+
+SyncStatus = Literal["running", "succeeded", "failed"]
 
 
 class ConnectTokenRequest(BaseModel):
@@ -38,6 +43,14 @@ class SyncRunRead(BaseModel):
     transactions_created: int
     transactions_updated: int
     error: str | None
+    # Names of the accounts imported from this item, to tell items apart without ids.
+    accounts: list[str] = []
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def error_kind(self) -> ErrorKind | None:
+        """Where a failed run went wrong; null for runs that did not fail."""
+        return classify_error(self.error) if self.status == "failed" else None
 
 
 class SyncList(BaseModel):

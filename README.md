@@ -139,7 +139,7 @@ Open Finance:
 | `POST /sync/connect-token` | Gera Connect Token usando credenciais server-side |
 | `POST /sync` | Sincroniza um `item_id` específico |
 | `POST /sync/refresh` | Sincroniza de novo todos os Items já conhecidos; a falha de um não interrompe os outros |
-| `GET /sync/runs` | Últimas 50 execuções de sincronização |
+| `GET /sync/runs` | Últimas 50 execuções, com contas do Item e tipo da falha; filtros `status` e `item_id` |
 
 Exemplo de sincronização direta:
 

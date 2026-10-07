@@ -7,5 +7,5 @@ export const queryKeys = {
   byCategory: (period: Period) => ['analytics', 'by-category', period.start, period.end] as const,
   transactions: (period: Period) => ['transactions', 'list', period.start, period.end] as const,
   transaction: (id: string) => ['transactions', 'detail', id] as const,
-  syncRuns: () => ['sync', 'runs'] as const,
+  syncRuns: (status: string | null) => ['sync', 'runs', status ?? 'all'] as const,
 }

@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { ApiError, errorMessage, hasStatus } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 import { createConnectToken, listSyncRuns, refreshConnections, syncItem } from '../api/sync'
-import type { SyncRun } from '../api/types'
+import type { SyncRun, SyncStatus } from '../api/types'
 import { Button } from '../components/Button'
 import { PageHeader } from '../components/PageHeader'
 import { SectionHeading } from '../components/SectionHeading'
@@ -27,6 +27,12 @@ const TONES: Record<Tone, string> = {
   neutral: 'border-line-strong text-ink',
   error: 'border-danger text-danger',
 }
+
+const HISTORY_FILTERS: { label: string; status: SyncStatus | null }[] = [
+  { label: 'Todas', status: null },
+  { label: 'Concluídas', status: 'succeeded' },
+  { label: 'Falhas', status: 'failed' },
+]
 
 function syncError(error: unknown): Message {
   const text = hasStatus(error, 503)
@@ -60,9 +66,10 @@ export function ConnectionsPage() {
   const queryClient = useQueryClient()
   const [message, setMessage] = useState<Message | null>(null)
   const progress = (text: string) => setMessage({ tone: 'progress', text })
+  const [statusFilter, setStatusFilter] = useState<SyncStatus | null>(null)
   const runs = useQuery({
-    queryKey: queryKeys.syncRuns(),
-    queryFn: ({ signal }) => listSyncRuns(signal),
+    queryKey: queryKeys.syncRuns(statusFilter),
+    queryFn: ({ signal }) => listSyncRuns(statusFilter, signal),
   })
 
   // A sync changes transactions and analytics too, and a failed one still records a run.
@@ -156,10 +163,39 @@ export function ConnectionsPage() {
 
       <section className="mt-10">
         <SectionHeading>Histórico de sincronizações</SectionHeading>
+        <div
+          role="group"
+          aria-label="Filtrar histórico"
+          className="mt-4 inline-flex gap-px overflow-hidden rounded-ctl border border-line-strong bg-line-strong"
+        >
+          {HISTORY_FILTERS.map((option) => {
+            const active = statusFilter === option.status
+            return (
+              <button
+                key={option.label}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setStatusFilter(option.status)}
+                className={`min-h-10 px-3 text-[0.8125rem] transition-colors ${
+                  active
+                    ? 'bg-brand-soft font-semibold text-accent'
+                    : 'bg-raised font-medium text-ink-soft hover:text-ink'
+                }`}
+              >
+                {option.label}
+              </button>
+            )
+          })}
+        </div>
         {!runs.data && runs.isError ? (
           <ErrorState message={errorMessage(runs.error)} onRetry={() => void runs.refetch()} />
         ) : !runs.data ? (
           <LoadingState label="Carregando histórico…" />
+        ) : runs.data.items.length === 0 && statusFilter ? (
+          <EmptyState
+            title="Nenhuma sincronização neste filtro"
+            message="Não há execuções com esse status entre as 50 mais recentes."
+          />
         ) : runs.data.items.length === 0 ? (
           <EmptyState
             title="Nenhuma sincronização"
