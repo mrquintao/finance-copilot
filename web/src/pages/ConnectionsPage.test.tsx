@@ -14,7 +14,11 @@ const RUNS = '/api/sync/runs'
 const noRuns = http.get(RUNS, () => HttpResponse.json({ items: [] }))
 
 describe('ConnectionsPage', () => {
-  beforeEach(() => openWidget.mockReset())
+  // Braces matter: a function returned from beforeEach is run by Vitest as a cleanup hook,
+  // and mockReset() returns the mock itself.
+  beforeEach(() => {
+    openWidget.mockReset()
+  })
 
   describe('history', () => {
     it('shows a loading state', async () => {
@@ -104,10 +108,12 @@ describe('ConnectionsPage', () => {
       openWidget.mockResolvedValue('item-1')
       const { user } = renderApp('/connections')
 
-      await user.click(screen.getByRole('button', { name: 'Conectar instituição' }))
+      await user.click(screen.getByRole('button', { name: 'Conectar com MeuPluggy' }))
 
       expect(
-        await screen.findByText('Sincronização concluída: 7 novas e 3 atualizadas.'),
+        await screen.findByText(
+          'MeuPluggy conectado e dados sincronizados: 7 novas e 3 atualizadas.',
+        ),
       ).toBeInTheDocument()
       expect(openWidget).toHaveBeenCalledWith('tok')
       expect(synced).toEqual({ item_id: 'item-1' })
@@ -122,7 +128,7 @@ describe('ConnectionsPage', () => {
       openWidget.mockResolvedValue(null)
       const { user } = renderApp('/connections')
 
-      await user.click(screen.getByRole('button', { name: 'Conectar instituição' }))
+      await user.click(screen.getByRole('button', { name: 'Conectar com MeuPluggy' }))
 
       // No POST /sync handler exists: a sync attempt would fail the test.
       expect(
@@ -130,7 +136,7 @@ describe('ConnectionsPage', () => {
       ).toBeInTheDocument()
     })
 
-    it('explains when Open Finance is not configured', async () => {
+    it('explains when Pluggy is not configured', async () => {
       server.use(
         noRuns,
         http.post('/api/sync/connect-token', () =>
@@ -142,27 +148,81 @@ describe('ConnectionsPage', () => {
       )
       const { user } = renderApp('/connections')
 
-      await user.click(screen.getByRole('button', { name: 'Conectar instituição' }))
+      await user.click(screen.getByRole('button', { name: 'Conectar com MeuPluggy' }))
 
       expect(
-        await screen.findByText(/Open Finance não está configurado no backend/),
+        await screen.findByText(/A integração com a Pluggy não está configurada no backend/),
       ).toBeInTheDocument()
       expect(openWidget).not.toHaveBeenCalled()
     })
 
-    it('reports a failed import after connecting', async () => {
+    it('says the connection failed when no connect token can be created', async () => {
+      server.use(
+        noRuns,
+        http.post('/api/sync/connect-token', () => new HttpResponse(null, { status: 502 })),
+      )
+      const { user } = renderApp('/connections')
+
+      await user.click(screen.getByRole('button', { name: 'Conectar com MeuPluggy' }))
+
+      expect(
+        await screen.findByText('Não foi possível conectar ao MeuPluggy. Tente novamente.'),
+      ).toBeInTheDocument()
+      expect(openWidget).not.toHaveBeenCalled()
+    })
+
+    it('says the connection failed when the widget reports an error', async () => {
+      server.use(
+        noRuns,
+        http.post('/api/sync/connect-token', () => HttpResponse.json({ connect_token: 'tok' })),
+      )
+      openWidget.mockRejectedValue(new Error('Pluggy Connect failed'))
+      const { user } = renderApp('/connections')
+
+      await user.click(screen.getByRole('button', { name: 'Conectar com MeuPluggy' }))
+
+      // No POST /sync handler exists: a sync attempt would fail the test.
+      expect(
+        await screen.findByText('Não foi possível conectar ao MeuPluggy. Tente novamente.'),
+      ).toBeInTheDocument()
+    })
+
+    it('says the backend is unreachable when the token request never gets a response', async () => {
+      server.use(
+        noRuns,
+        http.post('/api/sync/connect-token', () => HttpResponse.error()),
+      )
+      const { user } = renderApp('/connections')
+
+      await user.click(screen.getByRole('button', { name: 'Conectar com MeuPluggy' }))
+
+      expect(await screen.findByText(/Não foi possível conectar ao servidor/)).toBeInTheDocument()
+    })
+
+    it('reports a failed import after connecting, then recovers with sync again', async () => {
       server.use(
         noRuns,
         http.post('/api/sync/connect-token', () => HttpResponse.json({ connect_token: 'tok' })),
         http.post('/api/sync', () => new HttpResponse(null, { status: 502 })),
+        http.post('/api/sync/refresh', () => HttpResponse.json({ items: [makeSyncRun()] })),
       )
       openWidget.mockResolvedValue('item-1')
       const { user } = renderApp('/connections')
 
-      await user.click(screen.getByRole('button', { name: 'Conectar instituição' }))
+      await user.click(screen.getByRole('button', { name: 'Conectar com MeuPluggy' }))
 
       expect(
-        await screen.findByText(/O provedor Open Finance retornou um erro/),
+        await screen.findByText(
+          'MeuPluggy foi conectado, mas não foi possível importar os dados agora. Tente sincronizar novamente.',
+        ),
+      ).toBeInTheDocument()
+      // The connection itself is not reported as failed.
+      expect(screen.queryByText(/Não foi possível conectar/)).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Sincronizar novamente' }))
+
+      expect(
+        await screen.findByText('Sincronização concluída: 7 novas e 3 atualizadas.'),
       ).toBeInTheDocument()
     })
   })
@@ -195,7 +255,7 @@ describe('ConnectionsPage', () => {
 
       await user.click(screen.getByRole('button', { name: 'Sincronizar novamente' }))
 
-      expect(await screen.findByText('Nenhuma instituição conectada ainda.')).toBeInTheDocument()
+      expect(await screen.findByText('Nenhuma conta MeuPluggy conectada ainda.')).toBeInTheDocument()
     })
 
     it('disables both actions while a sync is running', async () => {
@@ -209,7 +269,7 @@ describe('ConnectionsPage', () => {
 
       expect(await screen.findByText('Sincronizando…')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Sincronizar novamente' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'Conectar instituição' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Conectar com MeuPluggy' })).toBeDisabled()
     })
   })
 })

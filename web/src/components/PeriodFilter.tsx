@@ -3,15 +3,17 @@ import { usePeriod } from '../hooks/usePeriod'
 import { isValidPeriod, periodLabel, PRESETS, type Period } from '../lib/period'
 import { Button } from './Button'
 
-const chip = (active: boolean) =>
-  `min-h-10 shrink-0 rounded-full px-4 text-sm font-medium transition-colors ${
+// One segmented control: the options share a frame and hairlines instead of being four
+// separate buttons. Two rows on a phone, one row from sm up.
+const segment = (active: boolean) =>
+  `min-h-10 px-3 text-[0.8125rem] transition-colors ${
     active
-      ? 'bg-teal-700 text-white dark:bg-teal-500 dark:text-slate-950'
-      : 'bg-white text-slate-700 ring-1 ring-slate-200 ring-inset hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-800 dark:hover:bg-slate-800'
+      ? 'bg-brand-soft font-semibold text-accent'
+      : 'bg-raised font-medium text-ink-soft hover:text-ink active:bg-surface'
   }`
 
 const dateInput =
-  'mt-1 block min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-base dark:border-slate-700 dark:bg-slate-900'
+  'mt-1 block min-h-11 w-full rounded-ctl border border-line-strong bg-raised px-3 text-base tabular-nums'
 
 export function PeriodFilter() {
   const { selection, period, setSelection } = usePeriod()
@@ -22,6 +24,12 @@ export function PeriodFilter() {
   const draftComplete = draft.start !== '' && draft.end !== ''
   const draftValid = isValidPeriod(draft.start, draft.end)
 
+  function startEditing() {
+    if (editing) return
+    setDraft(period)
+    setEditing(true)
+  }
+
   function apply(event: FormEvent) {
     event.preventDefault()
     if (!draftValid) return
@@ -30,66 +38,65 @@ export function PeriodFilter() {
   }
 
   return (
-    <section aria-label="Período" className="mb-5">
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0">
-        {PRESETS.map((preset) => (
+    <section aria-label="Período" className="mb-7">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-ctl border border-line-strong bg-line-strong sm:flex">
+          {PRESETS.map((preset) => {
+            const active = !customActive && selection.kind === preset.id
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                aria-pressed={active}
+                className={segment(active)}
+                onClick={() => {
+                  setEditing(false)
+                  setSelection({ kind: preset.id })
+                }}
+              >
+                {preset.label}
+              </button>
+            )
+          })}
           <button
-            key={preset.id}
             type="button"
-            aria-pressed={!customActive && selection.kind === preset.id}
-            className={chip(!customActive && selection.kind === preset.id)}
-            onClick={() => {
-              setEditing(false)
-              setSelection({ kind: preset.id })
-            }}
+            aria-pressed={customActive}
+            className={segment(customActive)}
+            onClick={startEditing}
           >
-            {preset.label}
+            Personalizado
           </button>
-        ))}
-        <button
-          type="button"
-          aria-pressed={customActive}
-          className={chip(customActive)}
-          onClick={() => {
-            setDraft(period)
-            setEditing(true)
-          }}
-        >
-          Personalizado
-        </button>
+        </div>
+        <p className="text-sm text-ink-soft">
+          <span className="label-caps mr-2">Período</span>
+          <span className="font-medium text-ink tabular-nums">{periodLabel(period)}</span>
+        </p>
       </div>
 
       {customActive && (
-        <form onSubmit={apply} className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-[1fr_1fr_auto]">
-          <label className="text-sm font-medium">
+        <form
+          onSubmit={apply}
+          className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-[11rem_11rem_auto] sm:justify-start"
+        >
+          <label className="text-xs font-medium text-ink-soft">
             De
             <input
               type="date"
               required
               className={dateInput}
               value={editing ? draft.start : period.start}
-              onFocus={() => {
-                if (!editing) {
-                  setDraft(period)
-                  setEditing(true)
-                }
-              }}
+              onFocus={startEditing}
               onChange={(event) => setDraft({ ...draft, start: event.target.value })}
             />
           </label>
-          <label className="text-sm font-medium">
+          <label className="text-xs font-medium text-ink-soft">
             Até
             <input
               type="date"
               required
               className={dateInput}
               value={editing ? draft.end : period.end}
-              onFocus={() => {
-                if (!editing) {
-                  setDraft(period)
-                  setEditing(true)
-                }
-              }}
+              onFocus={startEditing}
               onChange={(event) => setDraft({ ...draft, end: event.target.value })}
             />
           </label>
@@ -101,17 +108,12 @@ export function PeriodFilter() {
             Aplicar
           </Button>
           {editing && draftComplete && !draftValid && (
-            <p role="alert" className="col-span-full text-sm text-red-700 dark:text-red-400">
+            <p role="alert" className="col-span-full text-sm text-danger">
               A data inicial deve ser anterior ou igual à data final.
             </p>
           )}
         </form>
       )}
-
-      <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-        Período: <span className="font-medium tabular-nums">{periodLabel(period)}</span> (datas
-        inclusivas)
-      </p>
     </section>
   )
 }

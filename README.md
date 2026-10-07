@@ -20,7 +20,7 @@ Navegador / PWA: React + TypeScript (web/)
         |
         +-- FinancialDataProvider
                  |
-                 +-- PluggyProvider -> Pluggy / Open Finance
+                 +-- PluggyProvider -> Pluggy API -> conector MeuPluggy (200) -> bancos
 ```
 
 As credenciais do Pluggy ficam **somente no backend**. O cliente web recebe apenas um Connect Token de curta duração, gerado pelo backend, e abre o widget do Pluggy com ele. O banco continua sendo a fonte de verdade para contas e transações normalizadas.
@@ -44,7 +44,7 @@ O cliente web chama a API sempre em `/api`, na própria origem. Em desenvolvimen
 - Abstração `FinancialDataProvider`.
 - Adapter `PluggyProvider` com autenticação server-side.
 - Connect Token gerado pelo backend.
-- Fluxo `/sync/connect` para conectar uma instituição pelo Pluggy Connect.
+- Conexão pelo widget Pluggy Connect, aberto pelo cliente web.
 - Importação de contas BRL.
 - Importação paginada de transações POSTED via `/v2/transactions`.
 - Normalização de débito/crédito, data, merchant e categorias.
@@ -59,7 +59,7 @@ O cliente web chama a API sempre em `/api`, na própria origem. Em desenvolvimen
 - Cliente web em `web/`: React + TypeScript (strict) + Vite, React Router, TanStack Query, Recharts e Tailwind.
 - Dashboard com filtro de período (mês atual, mês anterior, últimos 3 meses e personalizado), cards e gráfico por categoria.
 - Transações paginadas e detalhe em rota própria (link compartilhável).
-- Conexões com o widget Pluggy Connect, "Sincronizar novamente" e histórico de sincronizações.
+- Conexões com a conta MeuPluggy pelo widget Pluggy Connect, "Sincronizar novamente" e histórico de sincronizações.
 - Manifest de PWA e ícones para "Adicionar à tela de início" (sem service worker por enquanto).
 - Ainda **sem autenticação**: ela é a próxima entrega deste marco.
 
@@ -68,7 +68,7 @@ O cliente web chama a API sempre em `/api`, na própria origem. Em desenvolvimen
 - Python **3.12+**.
 - PostgreSQL **18** ou Docker + Docker Compose v2.
 - Node.js **LTS** e npm, para o cliente web.
-- Para Open Finance real: aplicação criada no Pluggy e `PLUGGY_CLIENT_ID`/`PLUGGY_CLIENT_SECRET`.
+- Para dados reais: aplicação criada na Pluggy (`PLUGGY_CLIENT_ID`/`PLUGGY_CLIENT_SECRET`) e uma conta MeuPluggy com as suas instituições já conectadas.
 
 ## Configuração
 
@@ -136,10 +136,9 @@ Open Finance:
 
 | Método/rota | Função |
 | --- | --- |
-| `GET /sync/connect` | Página avulsa do Pluggy Connect, usada pelo antigo app iOS |
 | `POST /sync/connect-token` | Gera Connect Token usando credenciais server-side |
 | `POST /sync` | Sincroniza um `item_id` específico |
-| `POST /sync/refresh` | Sincroniza todos os Items já conhecidos |
+| `POST /sync/refresh` | Sincroniza de novo todos os Items já conhecidos; a falha de um não interrompe os outros |
 | `GET /sync/runs` | Últimas 50 execuções de sincronização |
 
 Exemplo de sincronização direta:
@@ -160,10 +159,10 @@ As datas são opcionais e inclusivas. Intervalo invertido retorna 422.
 ## Fluxo Open Finance
 
 ```text
-1. Web -> Conexões -> Conectar instituição
+1. Web -> Conexões -> Conectar com MeuPluggy
 2. Web chama POST /sync/connect-token
 3. Backend gera Connect Token no Pluggy
-4. Widget Pluggy Connect coleta autenticação/consentimento
+4. Widget Pluggy Connect abre direto no MeuPluggy (conector 200) e o usuário faz login nele
 5. onSuccess retorna o item
 6. Web chama POST /sync com o item_id
 7. backend busca contas
@@ -171,6 +170,16 @@ As datas são opcionais e inclusivas. Intervalo invertido retorna 422.
 9. normalize -> deduplicate/upsert -> PostgreSQL
 10. Dashboard/Transações passam a ler os dados sincronizados normalmente
 ```
+
+O Finance Copilot é de uso pessoal e não tem acesso comercial ao Open Finance: ele não se conecta diretamente aos bancos. As instituições são conectadas pelo usuário no **MeuPluggy**, o agregador pessoal gratuito da Pluggy, e o app importa o que esse único Item expõe. O widget só oferece o conector MeuPluggy; isso fica no cliente (`web/src/lib/pluggyConnect.ts`), e o backend continua falando apenas com a API da Pluggy por meio do `PluggyProvider`. Contas importadas aparecem com a instituição que a Pluggy informa para o Item (MeuPluggy).
+
+Um Item do MeuPluggy pode trazer várias contas, de instituições diferentes; todas as contas em BRL são importadas, cada uma identificada por `(provider, provider_account_id)`.
+
+**Sincronizar novamente** não abre o widget nem cria outro Item: o backend relê os `item_id` distintos já gravados em `sync_runs` (inclusive os de execuções que falharam) e importa de novo o que a Pluggy tem para cada um. Ele não pede à Pluggy que atualize o Item nos bancos; a atualização dos dados na origem fica por conta do MeuPluggy/Pluggy.
+
+O backend não espera nem faz polling do Item depois da conexão. Pela documentação do SDK instalado, o `onSuccess` do widget só dispara quando o Item foi criado ou atualizado com sucesso, e uma importação que pegue dados incompletos é corrigida pela seguinte, porque tudo é upsert.
+
+Falhas da Pluggy viram mensagens montadas pelo próprio adapter a partir do status HTTP, como `Pluggy rate limit exceeded (429).` ou `Pluggy resource not found (404, ITEM_NOT_FOUND).`. O corpo da resposta nunca é copiado para a resposta da API, para `sync_runs.error` ou para os logs; só entra o código de erro quando ele é uma constante simples.
 
 A sincronização aceita apenas contas/transações em BRL no MVP 0.2. Transações `PENDING` são ignoradas; apenas `POSTED` entram no banco. O valor é persistido como magnitude positiva, com `type = debit` ou `credit`, preservando a semântica utilizada pelos analytics existentes.
 
@@ -199,6 +208,7 @@ Regras do cliente:
 - dinheiro chega como string decimal e é formatado em BRL sem virar `number`; a única conversão fica no componente do gráfico, só para a escala;
 - datas `YYYY-MM-DD` são tratadas como datas locais, nunca com `new Date("YYYY-MM-DD")`;
 - o período selecionado fica na URL (`?period=previous-month` ou `?start=…&end=…`);
+- o tema (claro ou escuro) segue o sistema até o usuário escolher pelo botão de sol/lua; a escolha fica em `localStorage`;
 - o seed cobre abril a setembro de 2026: use **Mês anterior**, **Últimos 3 meses** ou **Personalizado** se o mês atual estiver vazio.
 
 Para testar em um iPhone na mesma LAN confiável, rode `npm run dev -- --host` e abra `http://<IP do computador>:5173`. O backend continua em `127.0.0.1`, porque só o Vite fala com ele. No Safari, **Compartilhar → Adicionar à Tela de Início** instala o app.
@@ -226,6 +236,6 @@ git checkout ios-mvp-0.2
 
 O Finance Copilot continua sendo um projeto **single-person e sem autenticação própria da API**. Com dados reais, não exponha o backend nem o servidor do Vite à internet até existir autenticação/autorização adequada. Para testar em um iPhone, use apenas LAN confiável; o deploy do MVP 0.3 usará HTTPS, com web e API no mesmo domínio, e autenticação por cookie `httpOnly`.
 
-Segredos ficam no `.env`/secret manager e nunca no cliente web, que também não guarda nada em `localStorage`/`sessionStorage`. O adapter não registra bodies da Pluggy nem credenciais. Erros persistidos em `sync_runs` são sanitizados. Respostas continuam com `Cache-Control: no-store`.
+Segredos ficam no `.env`/secret manager e nunca no cliente web, que não guarda tokens nem dados financeiros em `localStorage`/`sessionStorage` (só a preferência de tema). O adapter não registra bodies da Pluggy nem credenciais. Erros persistidos em `sync_runs` são sanitizados. Respostas continuam com `Cache-Control: no-store`.
 
 Ainda não implementado: autenticação, deploy e webhooks de atualização automática (os três fazem parte do MVP 0.3), além de multiusuário, pagamentos, LLM/chat, analytics avançados, recorrência avançada e insights proativos.

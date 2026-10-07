@@ -61,7 +61,7 @@ export function errorMessage(error: unknown): string {
       case 422:
         return 'O servidor recusou os parâmetros enviados.'
       case 502:
-        return 'O provedor Open Finance retornou um erro. Tente novamente em instantes.'
+        return 'A Pluggy retornou um erro. Tente novamente em instantes.'
       case 503:
         return 'Serviço indisponível no momento. Tente novamente em instantes.'
       default:

@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
+from collections.abc import Awaitable, Callable
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -18,6 +20,9 @@ from app.integrations.open_finance.provider import (
 )
 
 BRAZIL_TZ = ZoneInfo("America/Sao_Paulo")
+# Pluggy error bodies carry a machine-readable constant (e.g. ITEM_NOT_FOUND). Only a value
+# of exactly this shape is copied into our own error text; free-form messages never are.
+SAFE_ERROR_CODE = re.compile(r"[A-Z][A-Z0-9_]{2,59}")
 
 
 class PluggyProvider(FinancialDataProvider):
@@ -30,6 +35,8 @@ class PluggyProvider(FinancialDataProvider):
         client_secret: str,
         base_url: str = "https://api.pluggy.ai",
         timeout_seconds: float = 20,
+        transport: httpx.AsyncBaseTransport | None = None,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     ) -> None:
         if not client_id or not client_secret:
             raise ProviderError("Open Finance provider is not configured.")
@@ -37,6 +44,8 @@ class PluggyProvider(FinancialDataProvider):
         self._client_secret = client_secret
         self._base_url = base_url.rstrip("/")
         self._timeout = httpx.Timeout(timeout_seconds)
+        self._transport = transport
+        self._sleep = sleep
         self._api_key: str | None = None
 
     async def create_connect_token(self, *, item_id: str | None = None) -> str:
@@ -52,7 +61,8 @@ class PluggyProvider(FinancialDataProvider):
         return token
 
     async def get_accounts(self, *, item_id: str) -> list[ProviderAccount]:
-        item = await self._request_json("GET", f"/items/{item_id}")
+        # The id comes from the client; quoting keeps it a single path segment.
+        item = await self._request_json("GET", f"/items/{quote(item_id, safe='')}")
         if not isinstance(item, dict):
             raise ProviderError("Provider returned an invalid item response.")
         institution = self._institution_name(item)
@@ -159,7 +169,9 @@ class PluggyProvider(FinancialDataProvider):
             if authenticated:
                 headers["X-API-KEY"] = await self._api_key_value()
             try:
-                async with httpx.AsyncClient(timeout=self._timeout) as client:
+                async with httpx.AsyncClient(
+                    timeout=self._timeout, transport=self._transport
+                ) as client:
                     response = await client.request(
                         method,
                         f"{self._base_url}{path}",
@@ -169,27 +181,56 @@ class PluggyProvider(FinancialDataProvider):
                     )
             except httpx.TransportError as exc:
                 if attempt == 2:
-                    raise ProviderError("Open Finance provider is unreachable.") from exc
-                await asyncio.sleep(0.5 * (2**attempt))
+                    raise ProviderError("Pluggy is unreachable.") from exc
+                await self._sleep(0.5 * (2**attempt))
                 continue
 
             if response.status_code == 401 and authenticated and attempt < 2:
                 self._api_key = None
-                await asyncio.sleep(0.25)
+                await self._sleep(0.25)
                 continue
             if response.status_code in {429, 500, 502, 503, 504} and attempt < 2:
-                await asyncio.sleep(0.5 * (2**attempt))
+                await self._sleep(0.5 * (2**attempt))
                 continue
             if response.status_code >= 400:
-                raise ProviderError(
-                    f"Open Finance provider request failed ({response.status_code})."
-                )
+                raise self._failure(response, authenticated=authenticated)
             try:
                 return json.loads(response.text, parse_float=Decimal)
             except (json.JSONDecodeError, TypeError) as exc:
                 raise ProviderError("Provider returned invalid JSON.") from exc
 
-        raise ProviderError("Open Finance provider request failed.")
+        raise ProviderError("Pluggy request failed.")
+
+    @staticmethod
+    def _failure(response: httpx.Response, *, authenticated: bool) -> ProviderError:
+        """Describe a failed call by status, never by echoing the response body."""
+        status = response.status_code
+        if not authenticated and status in {400, 401, 403}:
+            reason = "Pluggy rejected the client credentials"
+        elif status == 401:
+            reason = "Pluggy authentication failed"
+        elif status == 403:
+            reason = "Pluggy request forbidden"
+        elif status == 404:
+            reason = "Pluggy resource not found"
+        elif status == 429:
+            reason = "Pluggy rate limit exceeded"
+        elif status >= 500:
+            reason = "Pluggy service unavailable"
+        else:
+            reason = "Pluggy request failed"
+
+        code = None
+        try:
+            body = response.json()
+        except ValueError:
+            body = None
+        if isinstance(body, dict):
+            candidate = body.get("codeDescription")
+            if isinstance(candidate, str) and SAFE_ERROR_CODE.fullmatch(candidate):
+                code = candidate
+        detail = f"{status}, {code}" if code else str(status)
+        return ProviderError(f"{reason} ({detail}).")
 
     @staticmethod
     def _institution_name(item: dict[str, Any]) -> str:

@@ -12,9 +12,9 @@ export function EmptyState({
   children,
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
+    <div className="py-10">
       <h2 className="text-base font-semibold">{title}</h2>
-      <p className="max-w-sm text-sm text-slate-500 dark:text-slate-400">{message}</p>
+      <p className="mt-1 max-w-md text-sm text-ink-soft">{message}</p>
       {children}
     </div>
   )

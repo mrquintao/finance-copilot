@@ -1,36 +1,65 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { errorMessage, hasStatus } from '../api/client'
+import { ApiError, errorMessage, hasStatus } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 import { createConnectToken, listSyncRuns, refreshConnections, syncItem } from '../api/sync'
 import type { SyncRun } from '../api/types'
 import { Button } from '../components/Button'
 import { PageHeader } from '../components/PageHeader'
+import { SectionHeading } from '../components/SectionHeading'
+import { Spinner } from '../components/Spinner'
 import { EmptyState } from '../components/states/EmptyState'
 import { ErrorState } from '../components/states/ErrorState'
 import { LoadingState } from '../components/states/LoadingState'
 import { SyncRunItem } from '../components/SyncRunItem'
 import { openPluggyConnect } from '../lib/pluggyConnect'
 
-function syncError(error: unknown): string {
-  if (hasStatus(error, 503)) {
-    return 'Open Finance não está configurado no backend (PLUGGY_CLIENT_ID e PLUGGY_CLIENT_SECRET).'
-  }
-  return errorMessage(error)
+type Tone = 'progress' | 'success' | 'neutral' | 'error'
+
+interface Message {
+  tone: Tone
+  text: string
 }
 
-function summarize(runs: SyncRun[]): string {
+const TONES: Record<Tone, string> = {
+  progress: 'border-line-strong text-ink-soft',
+  success: 'border-income text-ink',
+  neutral: 'border-line-strong text-ink',
+  error: 'border-danger text-danger',
+}
+
+function syncError(error: unknown): Message {
+  const text = hasStatus(error, 503)
+    ? 'A integração com a Pluggy não está configurada no backend (PLUGGY_CLIENT_ID e PLUGGY_CLIENT_SECRET).'
+    : errorMessage(error)
+  return { tone: 'error', text }
+}
+
+// A failure before any item exists: no token, or the widget reported an error.
+function connectError(error: unknown): Message {
+  // Not configured and backend unreachable have a more useful explanation of their own.
+  if (hasStatus(error, 503) || (error instanceof ApiError && error.status === null)) {
+    return syncError(error)
+  }
+  return { tone: 'error', text: 'Não foi possível conectar ao MeuPluggy. Tente novamente.' }
+}
+
+function summarize(runs: SyncRun[]): Message {
   if (runs.some((run) => run.status === 'failed')) {
-    return 'A sincronização falhou. Veja o histórico abaixo.'
+    return { tone: 'error', text: 'A sincronização falhou. Veja o histórico abaixo.' }
   }
   const created = runs.reduce((sum, run) => sum + run.transactions_created, 0)
   const updated = runs.reduce((sum, run) => sum + run.transactions_updated, 0)
-  return `Sincronização concluída: ${created} novas e ${updated} atualizadas.`
+  return {
+    tone: 'success',
+    text: `Sincronização concluída: ${created} novas e ${updated} atualizadas.`,
+  }
 }
 
 export function ConnectionsPage() {
   const queryClient = useQueryClient()
-  const [message, setMessage] = useState<string | null>(null)
+  const [message, setMessage] = useState<Message | null>(null)
+  const progress = (text: string) => setMessage({ tone: 'progress', text })
   const runs = useQuery({
     queryKey: queryKeys.syncRuns(),
     queryFn: ({ signal }) => listSyncRuns(signal),
@@ -40,28 +69,54 @@ export function ConnectionsPage() {
   const onSettled = () => queryClient.invalidateQueries()
 
   const connect = useMutation({
-    mutationFn: async () => {
-      setMessage('Gerando sessão segura…')
-      const { connect_token } = await createConnectToken()
-      setMessage('Aguardando a conexão com a instituição…')
-      const itemId = await openPluggyConnect(connect_token)
-      if (!itemId) return null
-      setMessage('Conta conectada. Importando transações…')
-      return syncItem({ item_id: itemId })
+    // Three different outcomes that must not be confused: the user gave up, the connection
+    // itself failed, or MeuPluggy was connected and only the import failed.
+    mutationFn: async (): Promise<Message> => {
+      let itemId: string | null
+      try {
+        progress('Gerando sessão segura…')
+        const { connect_token } = await createConnectToken()
+        progress('Aguardando a conexão com o MeuPluggy…')
+        itemId = await openPluggyConnect(connect_token)
+      } catch (error) {
+        return connectError(error)
+      }
+      if (!itemId) {
+        return { tone: 'neutral', text: 'A conexão não foi concluída. Tente novamente.' }
+      }
+
+      progress('MeuPluggy conectado. Importando contas e transações…')
+      try {
+        const run = await syncItem({ item_id: itemId })
+        if (run.status === 'succeeded') {
+          return {
+            tone: 'success',
+            text: `MeuPluggy conectado e dados sincronizados: ${run.transactions_created} novas e ${run.transactions_updated} atualizadas.`,
+          }
+        }
+      } catch {
+        // Falls through: the backend already knows the item, so "sync again" can retry it.
+      }
+      return {
+        tone: 'error',
+        text: 'MeuPluggy foi conectado, mas não foi possível importar os dados agora. Tente sincronizar novamente.',
+      }
     },
-    onSuccess: (run) =>
-      setMessage(run ? summarize([run]) : 'A conexão não foi concluída. Tente novamente.'),
-    onError: (error) => setMessage(syncError(error)),
+    onSuccess: setMessage,
     onSettled,
   })
 
   const refresh = useMutation({
     mutationFn: () => {
-      setMessage('Sincronizando…')
+      progress('Sincronizando…')
       return refreshConnections()
     },
     onSuccess: ({ items }) =>
-      setMessage(items.length === 0 ? 'Nenhuma instituição conectada ainda.' : summarize(items)),
+      setMessage(
+        items.length === 0
+          ? { tone: 'neutral', text: 'Nenhuma conta MeuPluggy conectada ainda.' }
+          : summarize(items),
+      ),
     onError: (error) => setMessage(syncError(error)),
     onSettled,
   })
@@ -69,31 +124,38 @@ export function ConnectionsPage() {
   const busy = connect.isPending || refresh.isPending
 
   return (
-    <>
+    <div className="max-w-3xl">
       <PageHeader title="Conexões" />
-      <section className="rounded-2xl bg-white p-4 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
-        <h2 className="font-semibold">Open Finance</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Conecte sua instituição financeira de forma segura. As credenciais do banco são tratadas
-          pelo provedor e não passam pelo Finance Copilot.
+      <section>
+        <h2 className="text-base font-semibold">MeuPluggy</h2>
+        <p className="mt-1 max-w-xl text-sm text-ink-soft">
+          O Finance Copilot não se conecta diretamente aos bancos. Ele importa, pela Pluggy, as
+          contas e transações das instituições que você já conectou na sua conta MeuPluggy.
         </p>
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+        <p className="mt-2 max-w-xl text-sm text-ink-soft">
+          O login é feito na janela do MeuPluggy; suas senhas não passam pelo Finance Copilot.
+        </p>
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
           <Button disabled={busy} onClick={() => connect.mutate()}>
-            Conectar instituição
+            Conectar com MeuPluggy
           </Button>
           <Button variant="secondary" disabled={busy} onClick={() => refresh.mutate()}>
             Sincronizar novamente
           </Button>
         </div>
         {message && (
-          <p role="status" className="mt-4 text-sm">
-            {message}
+          <p
+            role="status"
+            className={`mt-5 flex items-center gap-2.5 border-l-2 py-0.5 pl-3 text-sm ${TONES[message.tone]}`}
+          >
+            {message.tone === 'progress' && <Spinner />}
+            <span>{message.text}</span>
           </p>
         )}
       </section>
 
-      <section className="mt-8">
-        <h2 className="mb-3 text-lg font-semibold">Histórico de sincronizações</h2>
+      <section className="mt-10">
+        <SectionHeading>Histórico de sincronizações</SectionHeading>
         {!runs.data && runs.isError ? (
           <ErrorState message={errorMessage(runs.error)} onRetry={() => void runs.refetch()} />
         ) : !runs.data ? (
@@ -101,16 +163,16 @@ export function ConnectionsPage() {
         ) : runs.data.items.length === 0 ? (
           <EmptyState
             title="Nenhuma sincronização"
-            message="Conecte uma instituição para importar contas e transações."
+            message="Conecte sua conta MeuPluggy para importar contas e transações."
           />
         ) : (
-          <ul className="divide-y divide-slate-200 rounded-2xl bg-white ring-1 ring-slate-200 dark:divide-slate-800 dark:bg-slate-900 dark:ring-slate-800">
+          <ul>
             {runs.data.items.map((run) => (
               <SyncRunItem key={run.id} run={run} />
             ))}
           </ul>
         )}
       </section>
-    </>
+    </div>
   )
 }

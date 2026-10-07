@@ -18,7 +18,8 @@ Os testes do backend rodam contra PostgreSQL real, sem SQLite. Cada execução c
 - constraints, chaves estrangeiras e unicidade;
 - migrations reversíveis (downgrade e upgrade) e seed idempotente;
 - contrato OpenAPI;
-- erros e logs sem vazamento de dados financeiros.
+- erros e logs sem vazamento de dados financeiros;
+- sincronização com a Pluggy contra um servidor falso (sem rede): connect token, um Item com várias contas, paginação, deduplicação, refresh dos Items conhecidos, renovação da API key após 401, retry limitado em 429/5xx e mensagens de erro sem segredos.
 
 Os testes do web rodam com a API mockada (MSW), sem backend. Cobrem:
 
@@ -27,7 +28,8 @@ Os testes do web rodam com a API mockada (MSW), sem backend. Cobrem:
 - filtro de período: presets, virada de ano, fevereiro bissexto, intervalo invertido e leitura da URL;
 - estados de carregamento, vazio e erro com retry em Dashboard, Transações, Detalhe e Conexões;
 - troca de período: uma resposta atrasada do período anterior nunca aparece na tela;
-- paginação sem duplicar linhas e fluxo de conexão com o widget do Pluggy mockado.
+- paginação sem duplicar linhas e fluxo de conexão com o widget do Pluggy mockado;
+- alternância de tema claro/escuro, com a escolha salva e a preferência do sistema como padrão.
 
 ## Rodando localmente
 
@@ -72,16 +74,18 @@ Roteiro manual, com a API no ar e o seed aplicado (`npm run dev` e `http://local
 4. **Vazio:** escolha um período sem dados (por exemplo, janeiro de 2020) em Resumo e em Transações.
 5. **Erro:** pare o backend e recarregue: cada tela mostra o erro com **Tentar novamente**. Suba o backend e use o botão.
 6. **Troca rápida:** alterne os períodos em sequência rápida (se quiser, com a rede limitada no DevTools). Os números exibidos devem ser sempre os do período selecionado.
-7. **Celular:** em 390 px de largura (DevTools ou iPhone na LAN, com `npm run dev -- --host`), não pode haver rolagem horizontal e a barra de abas fica acima da área segura. No Safari do iPhone, **Adicionar à Tela de Início** deve instalar o app com ícone e nome.
+7. **Tema:** clique no sol para ir ao tema escuro (o ícone vira lua) e na lua para voltar ao claro. Recarregue a página: o tema escolhido continua, sem piscar no tema errado.
+8. **Celular:** em 390 px de largura (DevTools ou iPhone na LAN, com `npm run dev -- --host`), não pode haver rolagem horizontal e a barra de abas fica acima da área segura. No Safari do iPhone, **Adicionar à Tela de Início** deve instalar o app com ícone e nome.
 
-## Open Finance (Pluggy)
+## MeuPluggy (Pluggy)
 
-Requer `PLUGGY_CLIENT_ID` e `PLUGGY_CLIENT_SECRET` no `.env` do backend.
+Requer `PLUGGY_CLIENT_ID` e `PLUGGY_CLIENT_SECRET` no `.env` do backend e uma conta MeuPluggy com pelo menos uma instituição conectada.
 
-1. No web, abra **Conexões** e clique em **Conectar instituição**. O widget do Pluggy abre; conclua a conexão.
-2. Ao terminar, a importação começa sozinha e o histórico mostra a execução com status e contagens (as mesmas de `GET /sync/runs`).
+1. No web, abra **Conexões** e clique em **Conectar com MeuPluggy**. O widget abre sem lista de bancos: depois do aviso de consentimento, vai direto para o login do MeuPluggy. Conclua o login.
+2. Ao terminar, a importação começa sozinha, a tela mostra "MeuPluggy conectado e dados sincronizados" e o histórico mostra a execução com status e contagens (as mesmas de `GET /sync/runs`). Todas as contas em BRL do MeuPluggy devem aparecer nas transações.
 3. Clique em **Sincronizar novamente**: a execução nova deve trazer 0 transações novas, sem duplicar nada.
-4. Sem as credenciais do Pluggy, os dois botões devem informar que o Open Finance não está configurado.
+4. Sem as credenciais da Pluggy, os dois botões devem informar que a integração não está configurada.
+5. Feche o widget sem fazer login: a tela deve dizer que a conexão não foi concluída, sem tratar isso como erro.
 
 ## Limitações conhecidas
 
