@@ -166,6 +166,8 @@ Objetivo:
 
 ## MVP 0.6 — Insights proativos
 
+Entregue: endpoint `GET /analytics/insights`, com regras determinísticas sobre a comparação de períodos (sem LLM). Falta a exibição no cliente web.
+
 Possíveis exemplos:
 
 > Seus gastos com restaurantes estão 28% acima da média dos últimos seis meses.

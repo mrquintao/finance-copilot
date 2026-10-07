@@ -6,12 +6,14 @@ import type { Transaction, TransactionPage } from '../api/types'
 import { Button } from '../components/Button'
 import { PageHeader } from '../components/PageHeader'
 import { PeriodFilter } from '../components/PeriodFilter'
+import { TransactionFilters } from '../components/TransactionFilters'
 import { SectionHeading } from '../components/SectionHeading'
 import { EmptyState } from '../components/states/EmptyState'
 import { ErrorState } from '../components/states/ErrorState'
 import { LoadingState } from '../components/states/LoadingState'
 import { TransactionRow } from '../components/TransactionRow'
 import { usePeriod } from '../hooks/usePeriod'
+import { useTransactionFilters } from '../hooks/useTransactionFilters'
 
 // Offset pagination can repeat a row if data changes between pages; keep the first copy.
 function uniqueTransactions(pages: TransactionPage[]): Transaction[] {
@@ -23,9 +25,10 @@ function uniqueTransactions(pages: TransactionPage[]): Transaction[] {
 
 export function TransactionsPage() {
   const { period } = usePeriod()
+  const { filters, active, clearFilters } = useTransactionFilters()
   const query = useInfiniteQuery({
-    queryKey: queryKeys.transactions(period),
-    queryFn: ({ pageParam, signal }) => listTransactions(period, pageParam, signal),
+    queryKey: queryKeys.transactions(period, filters),
+    queryFn: ({ pageParam, signal }) => listTransactions(period, filters, pageParam, signal),
     initialPageParam: 0,
     getNextPageParam: (last) => {
       const next = last.offset + last.items.length
@@ -42,10 +45,20 @@ export function TransactionsPage() {
     <div className="max-w-3xl">
       <PageHeader title="Transações" />
       <PeriodFilter />
+      <TransactionFilters />
       {!pages && query.isError ? (
         <ErrorState message={errorMessage(query.error)} onRetry={() => void query.refetch()} />
       ) : !pages ? (
         <LoadingState label="Carregando transações…" />
+      ) : transactions.length === 0 && active ? (
+        <EmptyState
+          title="Nenhuma transação encontrada"
+          message="Nenhuma transação deste período corresponde aos filtros."
+        >
+          <Button variant="secondary" className="mt-4" onClick={clearFilters}>
+            Limpar filtros
+          </Button>
+        </EmptyState>
       ) : transactions.length === 0 ? (
         <EmptyState />
       ) : (

@@ -13,11 +13,15 @@ Os testes do backend rodam contra PostgreSQL real, sem SQLite. Cada execução c
 
 - listagem, detalhe e paginação estável de transações;
 - filtros de período (limites inclusivos, períodos abertos e vazios);
+- busca e filtros de transações: texto literal sem distinção de maiúsculas, conta, categoria e tipo, combinados entre si e com a paginação;
 - débitos, créditos e transferências separados corretamente;
+- insights por regras: limiares exatos (R$ 50,00 e 20%), cada tipo de insight, categoria nova sem percentual e resultado idêntico ao da comparação de períodos;
+- comparação com o período anterior equivalente: meses inteiros contra meses inteiros, demais intervalos contra o mesmo número de dias, variação absoluta exata e percentual nulo quando a base é zero;
 - dinheiro: centavos exatos, valores grandes e rejeição de float, NaN, infinito e frações de centavo;
 - constraints, chaves estrangeiras e unicidade;
 - migrations reversíveis (downgrade e upgrade) e seed idempotente;
 - contrato OpenAPI;
+- visão de contas: agrupamento por instituição, estado derivado da última sincronização do Item e nenhum identificador do provedor na resposta;
 - histórico de sincronização: filtros por status e Item, nomes das contas do Item e classificação da falha (provedor, rede, banco, validação) a partir da mensagem sanitizada;
 - erros e logs sem vazamento de dados financeiros;
 - sincronização com a Pluggy contra um servidor falso (sem rede): connect token, um Item com várias contas, paginação, deduplicação, refresh dos Items conhecidos, renovação da API key após 401, retry limitado em 429/5xx e mensagens de erro sem segredos.

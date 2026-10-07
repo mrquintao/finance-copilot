@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
+import { periodSearch } from '../lib/period'
 import { ThemeToggle } from './ThemeToggle'
 
 const icon = {
@@ -35,6 +36,15 @@ const TABS: { to: string; label: string; end?: boolean; icon: ReactNode }[] = [
     ),
   },
   {
+    to: '/accounts',
+    label: 'Contas',
+    icon: (
+      <svg {...icon}>
+        <path d="M3 7h18v12H3zM3 11h18M7 15h3" />
+      </svg>
+    ),
+  },
+  {
     to: '/connections',
     label: 'Conexões',
     icon: (
@@ -54,8 +64,8 @@ const activeTab =
 const idleTab = 'font-medium text-ink-soft hover:text-ink md:hover:bg-surface'
 
 export function AppShell() {
-  // Keep the selected period when switching tabs.
-  const { search } = useLocation()
+  // Keep the selected period when switching tabs, but not screen-specific filters.
+  const search = periodSearch(useLocation().search)
 
   return (
     <div className="min-h-dvh md:flex">
