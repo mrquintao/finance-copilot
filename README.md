@@ -224,6 +224,24 @@ O cliente SwiftUI foi removido da `main` quando o cliente web atingiu a paridade
 git checkout ios-mvp-0.2
 ```
 
+## Auditoria de qualidade dos dados
+
+```powershell
+.\.venv\Scripts\python.exe scripts/dev.py audit-data
+```
+
+Imprime um relatório **somente leitura** sobre o banco configurado. Ele nunca apaga nem corrige nada e só mostra contagens, datas e os ids internos das contas: nenhuma descrição, valor, estabelecimento ou identificador da Pluggy.
+
+| Verificação | O que sinaliza |
+| --- | --- |
+| `possible_duplicates` | Transações com mesma conta, data, valor, tipo e descrição. São candidatas a conferir, não erros: duas compras iguais no mesmo dia são legítimas |
+| `missing_external_ids` | Transações importadas sem o id externo usado na deduplicação |
+| `item_never_synchronized` | Item com execuções de sync e nenhuma bem-sucedida |
+| `stale_synchronization` | Item sem sync bem-sucedido há mais de 7 dias |
+| `historical_sync_gap` | Item que já ficou mais de 7 dias entre dois syncs bem-sucedidos (informativo) |
+| `account_without_transactions` | Conta importada sem transações, embora o Item já tenha sincronizado com sucesso |
+| `zero_amount`, `future_date`, `implausibly_old_date`, `blank_description` | Valores que o schema aceita, mas dificilmente estão certos (valor zero, data mais de um dia no futuro, data anterior a 2000, descrição em branco) |
+
 ## Regras financeiras
 
 - `amount` é não negativo.

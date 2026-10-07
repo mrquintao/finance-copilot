@@ -24,6 +24,7 @@ def main() -> None:
             "api",
             "test",
             "lint",
+            "audit-data",
             "docker-test",
         ],
     )
@@ -56,6 +57,8 @@ def main() -> None:
         ],
         "test": [sys.executable, "-m", "pytest", "backend/tests", "-q"],
         "lint": [sys.executable, "-m", "ruff", "check", "backend", "scripts"],
+        # Read-only data quality report: counts and metadata, nothing is modified.
+        "audit-data": [sys.executable, "-m", "app.quality"],
         "docker-test": [
             "docker",
             "compose",
