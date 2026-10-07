@@ -1,10 +1,15 @@
-from fastapi import APIRouter, HTTPException
+from datetime import date
+from typing import Annotated
+
+from fastapi import APIRouter, HTTPException, Query
 
 from app.analytics.comparison import get_period_comparison
 from app.analytics.insights import get_insights
+from app.analytics.projection import get_month_projection
 from app.analytics.queries import get_spending_by_category, get_spending_summary
 from app.analytics.schemas import (
     InsightList,
+    MonthProjection,
     PeriodComparison,
     SpendingByCategory,
     SpendingSummary,
@@ -58,3 +63,17 @@ def insights(session: SessionDep, period: PeriodDep) -> InsightList:
         return get_insights(session, period.start_date, period.end_date)
     except (ValueError, OverflowError) as exc:
         raise HTTPException(422, "The period has no previous equivalent period.") from exc
+
+
+@router.get("/month-projection", response_model=MonthProjection)
+def month_projection(
+    session: SessionDep,
+    as_of: Annotated[date, Query(description="The user's local date, YYYY-MM-DD")],
+) -> MonthProjection:
+    """Projected spending for the month of `as_of`: an estimate, not a guaranteed value.
+
+    Variable spending is assumed to keep its daily average for the remaining days. Spending
+    flagged as recurring is not averaged: what the previous month had and this month has not
+    shown yet is added once. The response carries every figure used.
+    """
+    return get_month_projection(session, as_of)
