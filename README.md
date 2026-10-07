@@ -126,9 +126,10 @@ Core financeiro:
 | Método/rota | Função |
 | --- | --- |
 | `GET /health` | Readiness do backend + PostgreSQL |
-| `GET /transactions` | Lista paginada e filtrável |
+| `GET /transactions` | Lista paginada; filtros combináveis por período, `q` (texto em descrição ou estabelecimento), `account_id`, `category_id` e `type` |
 | `GET /transactions/{id}` | Detalhe da transação |
 | `GET /categories` | Categorias |
+| `GET /accounts` | Contas agrupadas por instituição, com estado da sincronização e contagem de transações |
 | `GET /analytics/spending-summary` | Gastos, receitas e contagens |
 | `GET /analytics/spending-by-category` | Gastos por categoria |
 | `GET /analytics/period-comparison` | Gastos, receitas, contagem e categorias contra o período anterior equivalente |

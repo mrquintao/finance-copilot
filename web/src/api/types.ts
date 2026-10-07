@@ -78,6 +78,31 @@ export interface SpendingByCategory {
   items: CategorySpending[]
 }
 
+export type ConnectionState = 'connected' | 'failing' | 'syncing' | 'never_synced' | 'local'
+
+export interface AccountSummary {
+  id: UUID
+  name: string
+  institution: string
+  currency: 'BRL'
+  provider: string | null
+  connection: ConnectionState
+  last_sync: { status: SyncStatus; started_at: DateTime; finished_at: DateTime | null } | null
+  last_successful_sync_at: DateTime | null
+  transaction_count: number
+  last_transaction_date: LocalDate | null
+}
+
+export interface AccountGroup {
+  institution: string
+  accounts: AccountSummary[]
+}
+
+export interface AccountList {
+  total: number
+  groups: AccountGroup[]
+}
+
 export type Direction = 'up' | 'down' | 'equal'
 
 export interface DateRange {
