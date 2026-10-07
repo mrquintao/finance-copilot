@@ -49,3 +49,18 @@ def pluggy_settings() -> PluggySettings:
         raise RuntimeError("PLUGGY_BASE_URL must use HTTPS outside loopback development.")
 
     return PluggySettings(client_id=client_id, client_secret=client_secret, base_url=base_url)
+
+
+@dataclass(frozen=True, slots=True)
+class CopilotSettings:
+    api_key: str
+    model: str = "claude-opus-5-5"
+
+
+def copilot_settings() -> CopilotSettings:
+    _load_environment()
+    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    model = os.getenv("COPILOT_MODEL", "").strip() or "claude-opus-5-5"
+    if not api_key:
+        raise RuntimeError("Set ANTHROPIC_API_KEY; see .env.example.")
+    return CopilotSettings(api_key=api_key, model=model)
