@@ -11,6 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.middleware.base import RequestResponseEndpoint
 
+from app.accounts.router import router as accounts_router
 from app.analytics.router import router as analytics_router
 from app.categories.router import router as categories_router
 from app.core.config import database_url
@@ -87,6 +88,7 @@ def create_app() -> FastAPI:
     app.include_router(transactions_router)
     app.include_router(analytics_router)
     app.include_router(categories_router)
+    app.include_router(accounts_router)
     app.include_router(sync_router)
     return app
 
