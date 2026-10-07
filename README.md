@@ -37,7 +37,7 @@ O cliente web chama a API sempre em `/api`, na própria origem. Em desenvolvimen
 - API de transações, filtros, paginação e detalhe.
 - Analytics de gastos/receitas e gastos por categoria.
 - Dashboard, lista de transações e detalhe no cliente.
-- Seed determinístico com 126 transações de abril a setembro de 2026.
+- Dataset de demonstração determinístico (126 transações fictícias de abril a setembro de 2026), só para desenvolvimento.
 
 ### MVP 0.2 — Open Finance
 
@@ -108,7 +108,6 @@ Com os comandos do projeto:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/dev.py migrate
-.\.venv\Scripts\python.exe scripts/dev.py seed
 .\.venv\Scripts\python.exe scripts/dev.py api
 ```
 
@@ -116,8 +115,27 @@ Com Docker:
 
 ```sh
 docker compose up -d --build
-docker compose exec backend python -m app.db.seed
 ```
+
+### Persistência
+
+O PostgreSQL do `compose.yaml` grava no volume nomeado `postgres_data`. Reiniciar a API, reiniciar o container ou rodar `docker compose down` **não** apaga nada: contas, transações e histórico de sincronização continuam lá na próxima subida.
+
+`docker compose down -v` remove o volume e, com ele, todos os dados financeiros. Não use esse comando num banco com dados reais.
+
+### Dados de demonstração
+
+O dataset fictício (conta "Conta pessoal (exemplo)" do "Banco Exemplo", com 126 transações) existe para prints, roteiro manual e desenvolvimento num banco **sem** dados reais. Ele não faz parte da instalação e nada o insere automaticamente.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/dev.py seed-demo    # insere o dataset fictício
+.\.venv\Scripts\python.exe scripts/dev.py check-demo   # mostra o que o clean-demo removeria, sem remover
+.\.venv\Scripts\python.exe scripts/dev.py clean-demo   # remove só o dataset fictício
+```
+
+- `seed-demo` recusa rodar se o banco já tiver alguma conta importada de um provedor (`provider` preenchido). Para forçar num banco de desenvolvimento, de propósito: `python -m app.db.seed --allow-provider-data`. O comando antigo `seed` continua existindo como sinônimo.
+- `clean-demo` é a forma suportada de tirar o dataset fictício de um banco que também tem dados reais. Ele apaga a conta de demonstração e as transações dela pelos UUIDs fixos que o seed gera, não por nome nem por `provider IS NULL`. Contas e transações importadas, `sync_runs` e categorias não são tocados. Se a conta de demonstração tiver qualquer transação que o seed não criou, o comando aborta sem apagar nada. Pode ser rodado mais de uma vez.
+- Com dados fictícios e reais no mesmo banco, as telas somam tudo: a API não filtra por origem. Por isso os dois não devem conviver.
 
 ## API
 
@@ -212,7 +230,7 @@ Regras do cliente:
 - datas `YYYY-MM-DD` são tratadas como datas locais, nunca com `new Date("YYYY-MM-DD")`;
 - o período selecionado fica na URL (`?period=previous-month` ou `?start=…&end=…`);
 - o tema (claro ou escuro) segue o sistema até o usuário escolher pelo botão de sol/lua; a escolha fica em `localStorage`;
-- o seed cobre abril a setembro de 2026: use **Mês anterior**, **Últimos 3 meses** ou **Personalizado** se o mês atual estiver vazio.
+- o dataset de demonstração, quando usado, cobre abril a setembro de 2026: escolha **Personalizado** nesse intervalo para vê-lo.
 
 Para testar em um iPhone na mesma LAN confiável, rode `npm run dev -- --host` e abra `http://<IP do computador>:5173`. O backend continua em `127.0.0.1`, porque só o Vite fala com ele. No Safari, **Compartilhar → Adicionar à Tela de Início** instala o app.
 
