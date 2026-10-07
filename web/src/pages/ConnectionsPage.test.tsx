@@ -227,6 +227,105 @@ describe('ConnectionsPage', () => {
     })
   })
 
+  describe('history diagnostics', () => {
+    const failed = makeSyncRun({
+      id: 'cccccccc-cccc-4ccc-8ccc-ccccccccccc2',
+      status: 'failed',
+      started_at: '2026-09-30T16:00:00Z',
+      finished_at: '2026-09-30T16:02:05Z',
+      error: 'Pluggy service unavailable (503).',
+      error_kind: 'provider',
+      accounts: ['Cartão', 'Conta corrente'],
+    })
+
+    /** Answers like the backend: the status filter decides which runs come back. */
+    function serveHistory() {
+      const requested: (string | null)[] = []
+      server.use(
+        http.get(RUNS, ({ request }) => {
+          const status = new URL(request.url).searchParams.get('status')
+          requested.push(status)
+          const all = [failed, makeSyncRun()]
+          return HttpResponse.json({
+            items: status ? all.filter((run) => run.status === status) : all,
+          })
+        }),
+      )
+      return requested
+    }
+
+    it('shows which accounts a run belongs to, how long it took and why it failed', async () => {
+      serveHistory()
+      renderApp('/connections')
+
+      const row = (await screen.findByText('Falhou')).closest('li')!
+      expect(within(row).getByText('Cartão, Conta corrente')).toBeInTheDocument()
+      expect(within(row).getByText(/Duração: 2 min 05 s/)).toBeInTheDocument()
+      expect(within(row).getByText('Falha no provedor (Pluggy)')).toBeInTheDocument()
+      expect(within(row).getByText('Pluggy service unavailable (503).')).toBeInTheDocument()
+
+      const succeeded = screen.getByText('Concluída').closest('li')!
+      expect(within(succeeded).getByText(/Duração: 5 s/)).toBeInTheDocument()
+      expect(within(succeeded).queryByText(/Falha/)).not.toBeInTheDocument()
+    })
+
+    it.each([
+      ['network', 'Falha de rede'],
+      ['database', 'Falha no banco de dados'],
+      ['validation', 'Dados recusados na validação'],
+      ['unknown', 'Falha não classificada'],
+    ] as const)('labels a %s failure', async (kind, label) => {
+      server.use(
+        http.get(RUNS, () =>
+          HttpResponse.json({ items: [{ ...failed, error_kind: kind, accounts: [] }] }),
+        ),
+      )
+      renderApp('/connections')
+
+      expect(await screen.findByText(label)).toBeInTheDocument()
+      expect(screen.getByText(/Item sem contas importadas/)).toBeInTheDocument()
+    })
+
+    it('filters by failures and back to everything', async () => {
+      const requested = serveHistory()
+      const { user } = renderApp('/connections')
+      await screen.findByText('Concluída')
+      expect(screen.getByRole('button', { name: 'Todas' })).toHaveAttribute('aria-pressed', 'true')
+
+      await user.click(screen.getByRole('button', { name: 'Falhas' }))
+
+      await vi.waitFor(() => expect(screen.queryByText('Concluída')).not.toBeInTheDocument())
+      expect(screen.getByText('Falhou')).toBeInTheDocument()
+      expect(requested).toEqual([null, 'failed'])
+
+      await user.click(screen.getByRole('button', { name: 'Concluídas' }))
+      await screen.findByText('Concluída')
+      expect(screen.queryByText('Falhou')).not.toBeInTheDocument()
+      expect(requested.at(-1)).toBe('succeeded')
+
+      await user.click(screen.getByRole('button', { name: 'Todas' }))
+      expect(await screen.findByText('Falhou')).toBeInTheDocument()
+    })
+
+    it('explains an empty filtered history', async () => {
+      server.use(
+        http.get(RUNS, ({ request }) =>
+          HttpResponse.json({
+            items: new URL(request.url).searchParams.has('status') ? [] : [makeSyncRun()],
+          }),
+        ),
+      )
+      const { user } = renderApp('/connections')
+      await screen.findByText('Concluída')
+
+      await user.click(screen.getByRole('button', { name: 'Falhas' }))
+
+      expect(
+        await screen.findByRole('heading', { name: 'Nenhuma sincronização neste filtro' }),
+      ).toBeInTheDocument()
+    })
+  })
+
   describe('sync again', () => {
     it('refreshes every connection and sums the counts', async () => {
       server.use(

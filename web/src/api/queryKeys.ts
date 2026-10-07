@@ -11,7 +11,7 @@ export const queryKeys = {
   transactions: (period: Period, filters: TransactionFilters) =>
     ['transactions', 'list', period.start, period.end, filters] as const,
   transaction: (id: string) => ['transactions', 'detail', id] as const,
-  syncRuns: () => ['sync', 'runs'] as const,
+  syncRuns: (status: string | null) => ['sync', 'runs', status ?? 'all'] as const,
   accounts: () => ['accounts'] as const,
   categories: () => ['categories'] as const,
 }

@@ -153,6 +153,7 @@ export interface SyncRequest {
 }
 
 export type SyncStatus = 'running' | 'succeeded' | 'failed'
+export type SyncErrorKind = 'provider' | 'network' | 'database' | 'validation' | 'unknown'
 
 export interface SyncRun {
   id: UUID
@@ -166,6 +167,10 @@ export interface SyncRun {
   transactions_created: number
   transactions_updated: number
   error: string | null
+  /** Null unless the run failed. */
+  error_kind: SyncErrorKind | null
+  /** Names of the accounts imported from this item. */
+  accounts: string[]
 }
 
 export interface SyncList {

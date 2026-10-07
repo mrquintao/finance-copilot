@@ -22,6 +22,7 @@ Os testes do backend rodam contra PostgreSQL real, sem SQLite. Cada execução c
 - migrations reversíveis (downgrade e upgrade) e seed idempotente;
 - contrato OpenAPI;
 - visão de contas: agrupamento por instituição, estado derivado da última sincronização do Item e nenhum identificador do provedor na resposta;
+- histórico de sincronização: filtros por status e Item, nomes das contas do Item e classificação da falha (provedor, rede, banco, validação) a partir da mensagem sanitizada;
 - erros e logs sem vazamento de dados financeiros;
 - sincronização com a Pluggy contra um servidor falso (sem rede): connect token, um Item com várias contas, paginação, deduplicação, refresh dos Items conhecidos, renovação da API key após 401, retry limitado em 429/5xx e mensagens de erro sem segredos.
 

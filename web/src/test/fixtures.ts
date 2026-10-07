@@ -90,6 +90,8 @@ export function makeSyncRun(overrides: Partial<SyncRun> = {}): SyncRun {
     transactions_created: 7,
     transactions_updated: 3,
     error: null,
+    error_kind: null,
+    accounts: ['Conta Corrente'],
     ...overrides,
   }
 }
