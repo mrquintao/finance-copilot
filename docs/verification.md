@@ -22,6 +22,7 @@ Os testes do backend rodam contra PostgreSQL real, sem SQLite. Cada execução c
 - constraints, chaves estrangeiras e unicidade;
 - migrations reversíveis (downgrade e upgrade) e seed idempotente;
 - contrato OpenAPI;
+- auditoria de qualidade dos dados (`audit-data`): cada verificação, os limites exatos, relatório sem conteúdo de transações e a garantia de que nada é modificado;
 - visão de contas: agrupamento por instituição, estado derivado da última sincronização do Item e nenhum identificador do provedor na resposta;
 - histórico de sincronização: filtros por status e Item, nomes das contas do Item e classificação da falha (provedor, rede, banco, validação) a partir da mensagem sanitizada;
 - erros e logs sem vazamento de dados financeiros;
