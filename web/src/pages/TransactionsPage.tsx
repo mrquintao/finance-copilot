@@ -6,6 +6,7 @@ import type { Transaction, TransactionPage } from '../api/types'
 import { Button } from '../components/Button'
 import { PageHeader } from '../components/PageHeader'
 import { PeriodFilter } from '../components/PeriodFilter'
+import { SectionHeading } from '../components/SectionHeading'
 import { EmptyState } from '../components/states/EmptyState'
 import { ErrorState } from '../components/states/ErrorState'
 import { LoadingState } from '../components/states/LoadingState'
@@ -38,7 +39,7 @@ export function TransactionsPage() {
   const pageError = query.isFetchNextPageError
 
   return (
-    <>
+    <div className="max-w-3xl">
       <PageHeader title="Transações" />
       <PeriodFilter />
       {!pages && query.isError ? (
@@ -49,38 +50,37 @@ export function TransactionsPage() {
         <EmptyState />
       ) : (
         <section aria-labelledby="transactions-count">
-          <h2
-            id="transactions-count"
-            className="mb-2 text-sm font-medium text-slate-500 dark:text-slate-400"
-          >
-            {total} transações
-          </h2>
-          <ul className="divide-y divide-slate-200 overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200 dark:divide-slate-800 dark:bg-slate-900 dark:ring-slate-800">
+          <SectionHeading id="transactions-count">{total} transações</SectionHeading>
+          <ul>
             {transactions.map((transaction) => (
               <TransactionRow key={transaction.id} transaction={transaction} />
             ))}
           </ul>
           {pageError && (
-            <p role="alert" className="mt-3 text-center text-sm">
+            <p role="alert" className="mt-4 border-l-2 border-danger pl-3 text-sm">
               {errorMessage(query.error)}
             </p>
           )}
           {query.hasNextPage && (
-            <Button
-              variant="secondary"
-              className="mt-3 w-full"
-              disabled={query.isFetchingNextPage}
-              onClick={() => void query.fetchNextPage()}
-            >
-              {query.isFetchingNextPage
-                ? 'Carregando…'
-                : pageError
-                  ? 'Tentar novamente'
-                  : 'Carregar mais'}
-            </Button>
+            <div className="mt-4 flex items-center justify-between gap-4">
+              <p className="text-[0.8125rem] text-ink-soft tabular-nums">
+                {transactions.length} de {total}
+              </p>
+              <Button
+                variant="secondary"
+                disabled={query.isFetchingNextPage}
+                onClick={() => void query.fetchNextPage()}
+              >
+                {query.isFetchingNextPage
+                  ? 'Carregando…'
+                  : pageError
+                    ? 'Tentar novamente'
+                    : 'Carregar mais'}
+              </Button>
+            </div>
           )}
         </section>
       )}
-    </>
+    </div>
   )
 }

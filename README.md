@@ -208,6 +208,7 @@ Para testar em um iPhone na mesma LAN confiável, rode `npm run dev -- --host` e
 O cliente SwiftUI foi removido da `main` quando o cliente web atingiu a paridade. O último estado dele está na tag [`ios-mvp-0.2`](https://github.com/mrquintao/finance-copilot/tree/ios-mvp-0.2):
 
 ```sh
+- o tema (claro ou escuro) segue o sistema até o usuário escolher pelo botão de sol/lua; a escolha fica em `localStorage`;
 git checkout ios-mvp-0.2
 ```
 
@@ -226,6 +227,6 @@ git checkout ios-mvp-0.2
 
 O Finance Copilot continua sendo um projeto **single-person e sem autenticação própria da API**. Com dados reais, não exponha o backend nem o servidor do Vite à internet até existir autenticação/autorização adequada. Para testar em um iPhone, use apenas LAN confiável; o deploy do MVP 0.3 usará HTTPS, com web e API no mesmo domínio, e autenticação por cookie `httpOnly`.
 
-Segredos ficam no `.env`/secret manager e nunca no cliente web, que também não guarda nada em `localStorage`/`sessionStorage`. O adapter não registra bodies da Pluggy nem credenciais. Erros persistidos em `sync_runs` são sanitizados. Respostas continuam com `Cache-Control: no-store`.
+Segredos ficam no `.env`/secret manager e nunca no cliente web, que não guarda tokens nem dados financeiros em `localStorage`/`sessionStorage` (só a preferência de tema). O adapter não registra bodies da Pluggy nem credenciais. Erros persistidos em `sync_runs` são sanitizados. Respostas continuam com `Cache-Control: no-store`.
 
 Ainda não implementado: autenticação, deploy e webhooks de atualização automática (os três fazem parte do MVP 0.3), além de multiusuário, pagamentos, LLM/chat, analytics avançados, recorrência avançada e insights proativos.

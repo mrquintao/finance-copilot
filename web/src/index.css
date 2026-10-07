@@ -1,20 +1,95 @@
 @import 'tailwindcss';
 
+/*
+ * Design tokens. Components use the semantic names below (bg-canvas, text-ink-soft,
+ * border-line, rounded-ctl, ...) and never raw palette colors, so light and dark stay one
+ * system. The interface is neutral by default; brand and semantic colors carry meaning.
+ */
 :root {
-  color-scheme: light dark;
-  --chart-bar: #0d9488;
-  --chart-grid: #e2e8f0;
-  --chart-text: #475569;
-  --chart-hover: rgb(15 23 42 / 0.05);
+  color-scheme: light;
+
+  --canvas: #f4f2ed;
+  --surface: #faf9f6;
+  --raised: #ffffff;
+  --ink: #1c1c1a;
+  --ink-soft: #66645e;
+  --ink-muted: #8a877f;
+  --line: #d9d5cc;
+  --line-strong: #c5c0b5;
+
+  /* Brand: filled controls. Accent: the same green used as text or as a thin indicator. */
+  --brand: #173f35;
+  --brand-hover: #11332b;
+  --brand-soft: #e4ece7;
+  --on-brand: #faf9f6;
+  --accent: #173f35;
+
+  --income: #2c6a4f;
+  --warning: #86651c;
+  --danger: #8c2b23;
+
+  --chart-bar: #173f35;
+  --chart-grid: #e4e0d7;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --chart-bar: #2dd4bf;
-    --chart-grid: #1e293b;
-    --chart-text: #94a3b8;
-    --chart-hover: rgb(248 250 252 / 0.06);
-  }
+/* Dark is the same palette on warm charcoal. public/theme.js and the theme toggle set the
+   attribute; it starts from the system preference until the user chooses. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --canvas: #1a1917;
+  --surface: #211f1d;
+  --raised: #2a2826;
+  --ink: #ece9e2;
+  --ink-soft: #aba79e;
+  --ink-muted: #827e76;
+  --line: #363330;
+  --line-strong: #4a4641;
+
+  --brand: #2f6352;
+  --brand-hover: #387362;
+  --brand-soft: #25332d;
+  --on-brand: #f3f1ea;
+  --accent: #8fb8a6;
+
+  --income: #8fbf9f;
+  --warning: #d1b06a;
+  --danger: #e0958a;
+
+  --chart-bar: #6f9d8b;
+  --chart-grid: #2f2d2a;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-muted: var(--ink-muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-soft: var(--brand-soft);
+  --color-on-brand: var(--on-brand);
+  --color-accent: var(--accent);
+  --color-income: var(--income);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  /* Radius scale: controls, then surfaces. Nothing in the app is rounder than this. */
+  --radius-ctl: 0.375rem;
+  --radius-box: 0.625rem;
+}
+
+/* Small uppercase label that names a section or a figure, as in a printed statement. */
+@utility label-caps {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
 }
 
 html {
@@ -22,12 +97,19 @@ html {
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+  background: var(--canvas);
+  color: var(--ink);
   font-family:
     system-ui,
     -apple-system,
     'Segoe UI',
     Roboto,
     sans-serif;
+  -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }

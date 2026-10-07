@@ -27,7 +27,8 @@ Os testes do web rodam com a API mockada (MSW), sem backend. Cobrem:
 - filtro de período: presets, virada de ano, fevereiro bissexto, intervalo invertido e leitura da URL;
 - estados de carregamento, vazio e erro com retry em Dashboard, Transações, Detalhe e Conexões;
 - troca de período: uma resposta atrasada do período anterior nunca aparece na tela;
-- paginação sem duplicar linhas e fluxo de conexão com o widget do Pluggy mockado.
+- paginação sem duplicar linhas e fluxo de conexão com o widget do Pluggy mockado;
+- alternância de tema claro/escuro, com a escolha salva e a preferência do sistema como padrão.
 
 ## Rodando localmente
 
@@ -72,7 +73,8 @@ Roteiro manual, com a API no ar e o seed aplicado (`npm run dev` e `http://local
 4. **Vazio:** escolha um período sem dados (por exemplo, janeiro de 2020) em Resumo e em Transações.
 5. **Erro:** pare o backend e recarregue: cada tela mostra o erro com **Tentar novamente**. Suba o backend e use o botão.
 6. **Troca rápida:** alterne os períodos em sequência rápida (se quiser, com a rede limitada no DevTools). Os números exibidos devem ser sempre os do período selecionado.
-7. **Celular:** em 390 px de largura (DevTools ou iPhone na LAN, com `npm run dev -- --host`), não pode haver rolagem horizontal e a barra de abas fica acima da área segura. No Safari do iPhone, **Adicionar à Tela de Início** deve instalar o app com ícone e nome.
+7. **Tema:** clique no sol para ir ao tema escuro (o ícone vira lua) e na lua para voltar ao claro. Recarregue a página: o tema escolhido continua, sem piscar no tema errado.
+8. **Celular:** em 390 px de largura (DevTools ou iPhone na LAN, com `npm run dev -- --host`), não pode haver rolagem horizontal e a barra de abas fica acima da área segura. No Safari do iPhone, **Adicionar à Tela de Início** deve instalar o app com ícone e nome.
 
 ## Open Finance (Pluggy)
 

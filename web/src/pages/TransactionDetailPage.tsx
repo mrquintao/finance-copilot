@@ -4,6 +4,7 @@ import { errorMessage, hasStatus } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 import { getTransaction } from '../api/transactions'
 import type { Transaction } from '../api/types'
+import { SectionHeading } from '../components/SectionHeading'
 import { EmptyState } from '../components/states/EmptyState'
 import { ErrorState } from '../components/states/ErrorState'
 import { LoadingState } from '../components/states/LoadingState'
@@ -22,10 +23,10 @@ export function TransactionDetailPage() {
   const notFound = hasStatus(query.error, 404, 422)
 
   return (
-    <>
+    <div className="max-w-2xl">
       <Link
         to={{ pathname: '/transactions', search }}
-        className="mb-4 inline-flex min-h-11 items-center text-sm font-medium text-teal-700 dark:text-teal-300"
+        className="-ml-1 mb-3 inline-flex min-h-11 items-center px-1 text-sm font-medium text-accent underline-offset-4 hover:underline"
       >
         ← Transações
       </Link>
@@ -41,17 +42,18 @@ export function TransactionDetailPage() {
       ) : (
         <Detail transaction={query.data} />
       )}
-    </>
+    </div>
   )
 }
 
 function Detail({ transaction }: { transaction: Transaction }) {
+  // What and when first; bookkeeping fields after.
   const details: [string, string][] = [
     ['Data', formatLocalDate(transaction.date)],
-    ['Descrição', transaction.description],
-    ['Estabelecimento', transaction.merchant ?? 'Não informado'],
     ['Categoria', categoryName(transaction)],
     ['Subcategoria', transaction.subcategory ?? 'Não informada'],
+    ['Estabelecimento', transaction.merchant ?? 'Não informado'],
+    ['Descrição', transaction.description],
     ['Recorrente', transaction.is_recurring ? 'Sim' : 'Não'],
     ['Moeda', transaction.currency],
   ]
@@ -62,35 +64,36 @@ function Detail({ transaction }: { transaction: Transaction }) {
 
   return (
     <article>
-      <header className="mb-6">
-        <h1 className="text-xl font-bold break-words">{transactionTitle(transaction)}</h1>
-        <p className="mt-1 text-3xl font-semibold tracking-tight break-words tabular-nums">
+      <header className="border-b border-ink pb-5">
+        <p className="label-caps">{TYPE_LABELS[transaction.type]}</p>
+        <h1 className="mt-2 text-lg font-semibold break-words">{transactionTitle(transaction)}</h1>
+        <p className="mt-1 text-[clamp(1.75rem,8vw,2.25rem)] leading-tight font-semibold tracking-tight break-words tabular-nums">
           {formatBRL(transaction.amount)}
         </p>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          {TYPE_LABELS[transaction.type]}
-        </p>
+        {transaction.type === 'transfer' && (
+          <p className="mt-2 text-xs text-ink-soft">
+            Transferência interna: excluída dos totais de gastos e receitas.
+          </p>
+        )}
       </header>
       <FieldList title="Detalhes" fields={details} />
       <FieldList title="Conta" fields={account} />
-      {transaction.type === 'transfer' && (
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Transferência interna: excluída dos totais de gastos e receitas.
-        </p>
-      )}
     </article>
   )
 }
 
 function FieldList({ title, fields }: { title: string; fields: [string, string][] }) {
   return (
-    <section className="mb-6">
-      <h2 className="mb-2 text-sm font-medium text-slate-500 dark:text-slate-400">{title}</h2>
-      <dl className="divide-y divide-slate-200 rounded-2xl bg-white ring-1 ring-slate-200 dark:divide-slate-800 dark:bg-slate-900 dark:ring-slate-800">
+    <section className="mt-7">
+      <SectionHeading>{title}</SectionHeading>
+      <dl>
         {fields.map(([label, value]) => (
-          <div key={label} className="flex justify-between gap-4 px-4 py-3">
-            <dt className="shrink-0 text-slate-500 dark:text-slate-400">{label}</dt>
-            <dd className="min-w-0 text-right break-words">{value}</dd>
+          <div
+            key={label}
+            className="flex items-baseline justify-between gap-6 border-b border-line py-2.5 text-sm"
+          >
+            <dt className="shrink-0 text-ink-soft">{label}</dt>
+            <dd className="min-w-0 text-right font-medium break-words tabular-nums">{value}</dd>
           </div>
         ))}
       </dl>
