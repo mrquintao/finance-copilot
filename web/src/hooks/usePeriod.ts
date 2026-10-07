@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router'
 import { today } from '../lib/localDate'
 import {
+  PERIOD_PARAMS,
   parseSelection,
   resolveSelection,
   selectionToParams,
@@ -25,7 +26,16 @@ export function usePeriod(): {
   }, [key, todayISO])
 
   const setSelection = useCallback(
-    (next: PeriodSelection) => setParams(selectionToParams(next)),
+    (next: PeriodSelection) =>
+      setParams((previous) => {
+        // Replace only the period; other parameters (transaction filters) stay.
+        const params = new URLSearchParams(previous)
+        for (const name of PERIOD_PARAMS) params.delete(name)
+        for (const [name, value] of Object.entries(selectionToParams(next))) {
+          params.set(name, value)
+        }
+        return params
+      }),
     [setParams],
   )
 

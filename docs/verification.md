@@ -13,6 +13,7 @@ Os testes do backend rodam contra PostgreSQL real, sem SQLite. Cada execução c
 
 - listagem, detalhe e paginação estável de transações;
 - filtros de período (limites inclusivos, períodos abertos e vazios);
+- busca e filtros de transações: texto literal sem distinção de maiúsculas, conta, categoria e tipo, combinados entre si e com a paginação;
 - débitos, créditos e transferências separados corretamente;
 - dinheiro: centavos exatos, valores grandes e rejeição de float, NaN, infinito e frações de centavo;
 - constraints, chaves estrangeiras e unicidade;

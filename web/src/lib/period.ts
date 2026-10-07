@@ -25,6 +25,21 @@ export const PRESETS: readonly { id: PresetId; label: string }[] = [
 
 export const DEFAULT_SELECTION: PeriodSelection = { kind: 'current-month' }
 
+/** The URL parameters that carry the period. */
+export const PERIOD_PARAMS = ['period', 'start', 'end'] as const
+
+/** A query string with only the period, for links to screens that share nothing else. */
+export function periodSearch(search: string): string {
+  const current = new URLSearchParams(search)
+  const kept = new URLSearchParams()
+  for (const name of PERIOD_PARAMS) {
+    const value = current.get(name)
+    if (value !== null) kept.set(name, value)
+  }
+  const text = kept.toString()
+  return text ? `?${text}` : ''
+}
+
 function isPresetId(value: string | null): value is PresetId {
   return PRESETS.some((preset) => preset.id === value)
 }
