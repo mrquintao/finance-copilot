@@ -37,8 +37,11 @@ def period_comparison(session: SessionDep, period: PeriodDep) -> PeriodCompariso
     """
     if period.start_date is None or period.end_date is None:
         raise HTTPException(422, "start_date and end_date are required.")
-<<<<<<< HEAD
-    return get_period_comparison(session, period.start_date, period.end_date)
+    try:
+        return get_period_comparison(session, period.start_date, period.end_date)
+    except (ValueError, OverflowError) as exc:
+        # The equivalent previous period would start before the first representable date.
+        raise HTTPException(422, "The period has no previous equivalent period.") from exc
 
 
 @router.get("/insights", response_model=InsightList)
@@ -55,10 +58,3 @@ def insights(session: SessionDep, period: PeriodDep) -> InsightList:
         return get_insights(session, period.start_date, period.end_date)
     except (ValueError, OverflowError) as exc:
         raise HTTPException(422, "The period has no previous equivalent period.") from exc
-=======
-    try:
-        return get_period_comparison(session, period.start_date, period.end_date)
-    except (ValueError, OverflowError) as exc:
-        # The equivalent previous period would start before the first representable date.
-        raise HTTPException(422, "The period has no previous equivalent period.") from exc
->>>>>>> feat/9-monthly-comparison
