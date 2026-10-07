@@ -31,4 +31,8 @@ def period_comparison(session: SessionDep, period: PeriodDep) -> PeriodCompariso
     """
     if period.start_date is None or period.end_date is None:
         raise HTTPException(422, "start_date and end_date are required.")
-    return get_period_comparison(session, period.start_date, period.end_date)
+    try:
+        return get_period_comparison(session, period.start_date, period.end_date)
+    except (ValueError, OverflowError) as exc:
+        # The equivalent previous period would start before the first representable date.
+        raise HTTPException(422, "The period has no previous equivalent period.") from exc

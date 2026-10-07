@@ -258,3 +258,17 @@ def test_money_is_serialized_as_strings_never_floats(client, session, ledger):
 )
 def test_both_bounds_are_required_and_ordered(client, params):
     assert client.get(ROUTE, params=params).status_code == 422
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"start_date": "0001-01-01", "end_date": "0001-01-31"},
+        {"start_date": "0001-01-01", "end_date": "0001-01-10"},
+    ],
+)
+def test_period_without_a_previous_equivalent_is_rejected(client, params):
+    response = client.get(ROUTE, params=params)
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "The period has no previous equivalent period."}
