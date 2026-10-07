@@ -4,6 +4,7 @@ import { errorMessage } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 import type { CategorySpending, SpendingSummary } from '../api/types'
 import { CategoryChart } from '../components/CategoryChart'
+import { MonthProjection } from '../components/MonthProjection'
 import { PageHeader } from '../components/PageHeader'
 import { PeriodComparison } from '../components/PeriodComparison'
 import { PeriodFilter } from '../components/PeriodFilter'
@@ -15,7 +16,7 @@ import { usePeriod } from '../hooks/usePeriod'
 import { formatBRL } from '../lib/money'
 
 export function DashboardPage() {
-  const { period } = usePeriod()
+  const { period, selection } = usePeriod()
   // No placeholderData: while a new period loads, the previous period's numbers are not shown.
   const summary = useQuery({
     queryKey: queryKeys.summary(period),
@@ -47,6 +48,8 @@ export function DashboardPage() {
       ) : (
         <>
           <Dashboard summary={summary.data} categories={categories.data.items} />
+          {/* The projection is about the month in progress, so it follows that preset. */}
+          {selection.kind === 'current-month' && <MonthProjection />}
           <PeriodComparison period={period} />
         </>
       )}

@@ -20,10 +20,14 @@ def main() -> None:
             "up",
             "down",
             "migrate",
+            "seed-demo",
+            "check-demo",
+            "clean-demo",
             "seed",
             "api",
             "test",
             "lint",
+            "audit-data",
             "docker-test",
         ],
     )
@@ -42,7 +46,12 @@ def main() -> None:
             "upgrade",
             "head",
         ],
-        "seed": [sys.executable, "-m", "app.db.seed"],
+        # Demo-only fake data. Seeding refuses to run next to provider-imported accounts.
+        "seed-demo": [sys.executable, "-m", "app.db.seed", "seed"],
+        "check-demo": [sys.executable, "-m", "app.db.seed", "clean", "--dry-run"],
+        "clean-demo": [sys.executable, "-m", "app.db.seed", "clean"],
+        # Old name of seed-demo, kept so existing habits and scripts keep working.
+        "seed": [sys.executable, "-m", "app.db.seed", "seed"],
         "api": [
             sys.executable,
             "-m",
@@ -56,6 +65,8 @@ def main() -> None:
         ],
         "test": [sys.executable, "-m", "pytest", "backend/tests", "-q"],
         "lint": [sys.executable, "-m", "ruff", "check", "backend", "scripts"],
+        # Read-only data quality report: counts and metadata, nothing is modified.
+        "audit-data": [sys.executable, "-m", "app.quality"],
         "docker-test": [
             "docker",
             "compose",

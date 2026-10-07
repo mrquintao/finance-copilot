@@ -1,6 +1,11 @@
 import type { Period } from '../lib/period'
 import { request } from './client'
-import type { PeriodComparison, SpendingByCategory, SpendingSummary } from './types'
+import type {
+  MonthProjection,
+  PeriodComparison,
+  SpendingByCategory,
+  SpendingSummary,
+} from './types'
 
 const periodQuery = (period: Period) => ({ start_date: period.start, end_date: period.end })
 
@@ -17,4 +22,9 @@ export function getSpendingByCategory(
 
 export function getPeriodComparison(period: Period, signal?: AbortSignal): Promise<PeriodComparison> {
   return request('/analytics/period-comparison', { query: periodQuery(period), signal })
+}
+
+/** `asOf` is the user's local date: the backend never guesses "today". */
+export function getMonthProjection(asOf: string, signal?: AbortSignal): Promise<MonthProjection> {
+  return request('/analytics/month-projection', { query: { as_of: asOf }, signal })
 }
