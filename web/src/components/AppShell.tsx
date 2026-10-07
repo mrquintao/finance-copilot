@@ -35,6 +35,15 @@ const TABS: { to: string; label: string; end?: boolean; icon: ReactNode }[] = [
     ),
   },
   {
+    to: '/accounts',
+    label: 'Contas',
+    icon: (
+      <svg {...icon}>
+        <path d="M3 7h18v12H3zM3 11h18M7 15h3" />
+      </svg>
+    ),
+  },
+  {
     to: '/connections',
     label: 'Conexões',
     icon: (

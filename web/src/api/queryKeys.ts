@@ -8,4 +8,5 @@ export const queryKeys = {
   transactions: (period: Period) => ['transactions', 'list', period.start, period.end] as const,
   transaction: (id: string) => ['transactions', 'detail', id] as const,
   syncRuns: () => ['sync', 'runs'] as const,
+  accounts: () => ['accounts'] as const,
 }
