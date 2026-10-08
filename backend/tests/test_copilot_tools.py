@@ -6,7 +6,7 @@ from decimal import Decimal
 import pytest
 
 from app.copilot.grounding import amounts_in_text, ungrounded_amounts
-from app.copilot.tools import TOOL_SPECS, resolve_preset, run_tool
+from app.copilot.tools import TOOL_SPECS, parse_period_text, resolve_preset, run_tool
 from app.db.models import Account, Category, SyncRun, Transaction
 
 TODAY = date(2026, 10, 7)
@@ -214,7 +214,12 @@ def test_list_categories(session, ledger):
             },
         ),
         ("get_spending_summary", {**SEPTEMBER, "account_id": "x"}),
-        ("search_transactions", {**SEPTEMBER, "limit": 500}),
+        ("search_transactions", {**SEPTEMBER, "limit": -5}),
+        ("search_transactions", {**SEPTEMBER, "limit": "muitas"}),
+        ("get_spending_summary", {"period": "setembro"}),
+        ("get_spending_summary", {"period": "2026-13"}),
+        ("get_spending_summary", {"period": "2026-02-30"}),
+        ("get_spending_summary", {"period": "2026-09-30..2026-09-01"}),
         ("search_transactions", {**SEPTEMBER, "type": "expense"}),
         ("delete_transactions", {}),
         ("list_categories", {"drop": True}),
@@ -295,3 +300,112 @@ def test_grounding_accepts_only_amounts_present_in_results():
     # A count that looks like an amount is not confused with one.
     assert ungrounded_amounts("Foram 8 transações.", results) == []
     assert ungrounded_amounts("Gastou R$ 10,00.", []) == ["10.00"]
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("previous_month", {"preset": "previous_month"}),
+        (" current_month ", {"preset": "current_month"}),
+        ("2020-01", {"start_date": "2020-01-01", "end_date": "2020-01-31"}),
+        ("2024-02", {"start_date": "2024-02-01", "end_date": "2024-02-29"}),
+        ("2025", {"start_date": "2025-01-01", "end_date": "2025-12-31"}),
+        ("2026-09-15", {"start_date": "2026-09-15", "end_date": "2026-09-15"}),
+        ("2026-03-01..2026-03-15", {"start_date": "2026-03-01", "end_date": "2026-03-15"}),
+        ("2026-03-01 a 2026-03-15", {"start_date": "2026-03-01", "end_date": "2026-03-15"}),
+        ("2026-03-01/2026-03-15", {"start_date": "2026-03-01", "end_date": "2026-03-15"}),
+        # Not understood: left as an unknown preset, which validation then rejects.
+        ("janeiro de 2020", {"preset": "janeiro de 2020"}),
+        ("2026-13", {"preset": "2026-13"}),
+        ("", {"preset": ""}),
+    ],
+)
+def test_period_written_as_one_string(text, expected):
+    assert parse_period_text(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("period", "bounds"),
+    [
+        ("previous_month", ("2026-09-01", "2026-09-30")),
+        ("2026-09", ("2026-09-01", "2026-09-30")),
+        ("2026", ("2026-01-01", "2026-12-31")),
+        ("2026-09-01..2026-09-07", ("2026-09-01", "2026-09-07")),
+    ],
+)
+def test_tools_accept_the_period_as_a_string(session, ledger, period, bounds):
+    outcome = run(session, "get_spending_summary", {"period": period})
+
+    assert not outcome.is_error
+    assert outcome.result["period"] == {"start_date": bounds[0], "end_date": bounds[1]}
+
+
+def test_january_2020_is_queried_as_january_2020(session, ledger):
+    outcome = run(session, "get_spending_summary", {"period": "2020-01"})
+
+    assert outcome.period == (date(2020, 1, 1), date(2020, 1, 31))
+    assert outcome.result["transaction_count"] == 0
+
+
+def test_search_caps_the_limit_instead_of_failing(session, ledger):
+    outcome = run(session, "search_transactions", {"period": "2026-09", "limit": 100})
+
+    assert not outcome.is_error
+    assert outcome.arguments["limit"] == 20
+    assert outcome.result["total_count"] == 8
+
+
+def test_search_drops_a_category_that_only_repeats_the_text(session, ledger):
+    """What a local model really sent for "quanto gastei com Uber": category and text alike."""
+    outcome = run(
+        session,
+        "search_transactions",
+        {"period": "2026-09", "text": "Uber", "category": "uber", "limit": 100},
+    )
+
+    assert not outcome.is_error
+    assert "category" not in outcome.arguments
+    assert outcome.result["totals_by_type"]["debit"] == {"amount": "59.00", "count": 2}
+
+
+def test_an_unknown_category_different_from_the_text_is_still_an_error(session, ledger):
+    outcome = run(
+        session, "search_transactions", {"period": "2026-09", "text": "Uber", "category": "Viagens"}
+    )
+
+    assert outcome.is_error
+    assert "without `category`" in outcome.result["error"]
+
+
+def test_the_advertised_period_is_a_single_string():
+    for spec in TOOL_SPECS:
+        period = spec.input_schema["properties"].get("period")
+        if period is not None:
+            assert period["type"] == "string"
+            assert '"YYYY-MM"' in period["description"]
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        # Exactly what a local model sent for "quanto gastei com Uber".
+        {"category": "", "limit": 0},
+        {"category": "None", "limit": "10"},
+        {"category": None, "type": None, "limit": None},
+        {"category": " Todas ", "type": ""},
+    ],
+)
+def test_placeholders_in_optional_fields_count_as_absent(session, ledger, extra):
+    outcome = run(session, "search_transactions", {"period": "2026-09", "text": "Uber", **extra})
+
+    assert not outcome.is_error
+    assert "category" not in outcome.arguments and "type" not in outcome.arguments
+    assert outcome.arguments["limit"] == 10
+    assert outcome.result["totals_by_type"]["debit"] == {"amount": "59.00", "count": 2}
+
+
+def test_an_empty_text_is_not_a_search_for_everything_by_accident(session, ledger):
+    outcome = run(session, "search_transactions", {"period": "2026-09", "text": "  "})
+
+    assert "text" not in outcome.arguments
+    assert outcome.result["total_count"] == 8

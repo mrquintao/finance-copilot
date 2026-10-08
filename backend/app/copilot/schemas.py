@@ -78,3 +78,11 @@ class CopilotAnswer(BaseModel):
     # True when queries ran and none of them found any data.
     no_data: bool = False
     evidence: list[ToolEvidence]
+
+
+class CopilotStatusInfo(BaseModel):
+    configured: bool
+    provider: Literal["ollama", "anthropic"] | None
+    model: str | None
+    # True when the model runs on this machine: questions and data do not leave it.
+    local: bool

@@ -1,12 +1,26 @@
 import { screen, within } from '@testing-library/react'
 import { delay, http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { CopilotAnswer, CopilotEvidence } from '../api/types'
+import type { CopilotAnswer, CopilotEvidence, CopilotStatusInfo } from '../api/types'
 import { formatFact, transactionsHref } from '../lib/copilot'
 import { renderApp } from '../test/render'
 import { server } from '../test/server'
 
 const ASK = '/api/copilot/ask'
+const STATUS = '/api/copilot/status'
+
+const ollama: CopilotStatusInfo = {
+  configured: true,
+  provider: 'ollama',
+  model: 'llama3.1:8b',
+  local: true,
+}
+const anthropic: CopilotStatusInfo = {
+  configured: true,
+  provider: 'anthropic',
+  model: 'claude-opus-5-5',
+  local: false,
+}
 const SEPTEMBER = { start_date: '2026-09-01', end_date: '2026-09-30' }
 const FOOD = '22222222-2222-4222-8222-222222222222'
 const UBER = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'
@@ -74,6 +88,8 @@ describe('CopilotPage', () => {
     // Only the clock is faked, so the date sent with the question is fixed.
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date(2026, 9, 7, 9, 0))
+    // The local Ollama default, unless a test says otherwise.
+    server.use(http.get(STATUS, () => HttpResponse.json(ollama)))
   })
   afterEach(() => {
     vi.useRealTimers()
@@ -84,7 +100,6 @@ describe('CopilotPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Copilot', level: 1 })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Perguntar' })).toBeDisabled()
-    expect(screen.getByText(/são enviados ao modelo de IA \(Anthropic\)/)).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Resposta' })).not.toBeInTheDocument()
   })
 
@@ -269,14 +284,14 @@ describe('CopilotPage', () => {
     expect(screen.getByText('Variação de transações').nextElementSibling).toHaveTextContent('+3')
   })
 
-  it('explains when the Copilot is not configured', async () => {
+  it('explains when the Ollama model is missing', async () => {
     server.use(http.post(ASK, () => HttpResponse.json({ detail: 'x' }, { status: 503 })))
     const { user } = renderApp('/copilot')
 
     await askQuestion(user, 'Quanto gastei?')
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'O Copilot não está configurado no backend (ANTHROPIC_API_KEY).',
+      'O modelo llama3.1:8b não está instalado no Ollama ou não aceita ferramentas. Rode "ollama pull llama3.1:8b" e tente de novo.',
     )
   })
 
@@ -292,13 +307,93 @@ describe('CopilotPage', () => {
     const { user } = renderApp('/copilot')
 
     await askQuestion(user, 'Quanto gastei?')
-    expect(await screen.findByRole('alert')).toHaveTextContent('O modelo de IA não respondeu')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'O Ollama não respondeu. Confira se ele está aberto',
+    )
 
     failing = false
     await user.click(screen.getByRole('button', { name: 'Tentar novamente' }))
 
     expect(await screen.findByRole('heading', { name: 'Texto do Copilot' })).toBeInTheDocument()
     expect(questions).toEqual(['Quanto gastei?', 'Quanto gastei?'])
+  })
+
+  describe('where the data goes', () => {
+    it('says a local Ollama keeps everything on this computer', async () => {
+      renderApp('/copilot')
+
+      expect(
+        await screen.findByText(
+          'A pergunta e os dados consultados são processados neste computador, pelo Ollama (llama3.1:8b). Nada é enviado para fora.',
+        ),
+      ).toBeInTheDocument()
+    })
+
+    it('says so when Ollama runs on another computer', async () => {
+      server.use(http.get(STATUS, () => HttpResponse.json({ ...ollama, local: false })))
+      renderApp('/copilot')
+
+      expect(
+        await screen.findByText(/são enviados ao Ollama em outro computador da rede/),
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/Nada é enviado para fora/)).not.toBeInTheDocument()
+    })
+
+    it('says so when a hosted model is used', async () => {
+      server.use(http.get(STATUS, () => HttpResponse.json(anthropic)))
+      renderApp('/copilot')
+
+      expect(
+        await screen.findByText(
+          'A pergunta e os dados consultados são enviados à API da Anthropic (claude-opus-5-5).',
+        ),
+      ).toBeInTheDocument()
+    })
+
+    it('says so when nothing is configured', async () => {
+      server.use(
+        http.get(STATUS, () =>
+          HttpResponse.json({ configured: false, provider: null, model: null, local: false }),
+        ),
+      )
+      renderApp('/copilot')
+
+      expect(await screen.findByText('O Copilot não está configurado no backend.')).toBeVisible()
+    })
+
+    it('makes no claim when the status cannot be loaded', async () => {
+      server.use(http.get(STATUS, () => new HttpResponse(null, { status: 500 })))
+      renderApp('/copilot')
+
+      await screen.findByRole('button', { name: 'Perguntar' })
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(screen.queryByText(/dados consultados são/)).not.toBeInTheDocument()
+    })
+
+    it('warns that a local model can be slow while it works', async () => {
+      server.use(http.post(ASK, () => delay('infinite')))
+      const { user } = renderApp('/copilot')
+      await screen.findByText(/pelo Ollama/)
+
+      await askQuestion(user, 'Quanto gastei?')
+
+      expect(await screen.findByRole('status')).toHaveTextContent(
+        'Um modelo local pode levar um minuto ou mais.',
+      )
+    })
+
+    it('uses the hosted wording for failures of a hosted model', async () => {
+      server.use(
+        http.get(STATUS, () => HttpResponse.json(anthropic)),
+        http.post(ASK, () => new HttpResponse(null, { status: 503 })),
+      )
+      const { user } = renderApp('/copilot')
+      await screen.findByText(/API da Anthropic/)
+
+      await askQuestion(user, 'Quanto gastei?')
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('ANTHROPIC_API_KEY')
+    })
   })
 
   it('is reachable from the navigation', async () => {

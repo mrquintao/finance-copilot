@@ -2,11 +2,12 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from app.copilot.schemas import CopilotAnswer, CopilotQuestion
+from app.copilot.schemas import CopilotAnswer, CopilotQuestion, CopilotStatusInfo
 from app.copilot.service import ask
 from app.core.config import copilot_settings
 from app.db.session import SessionDep
 from app.integrations.llm.anthropic_provider import AnthropicProvider
+from app.integrations.llm.ollama_provider import OllamaProvider
 from app.integrations.llm.provider import LLMError, LLMProvider
 
 router = APIRouter(prefix="/copilot", tags=["copilot"])
@@ -18,7 +19,25 @@ def llm() -> LLMProvider:
         settings = copilot_settings()
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail="Copilot is not configured.") from exc
-    return AnthropicProvider(api_key=settings.api_key, model=settings.model)
+    if settings.provider == "anthropic":
+        return AnthropicProvider(api_key=settings.api_key, model=settings.model)
+    return OllamaProvider(model=settings.model, base_url=settings.base_url)
+
+
+@router.get("/status", response_model=CopilotStatusInfo)
+def copilot_status() -> CopilotStatusInfo:
+    """Which model serves the Copilot and whether data leaves this machine for it.
+
+    Configuration only: it does not call the model, so a local Ollama that is not
+    running still reports as configured and fails on the first question instead.
+    """
+    try:
+        settings = copilot_settings()
+    except RuntimeError:
+        return CopilotStatusInfo(configured=False, provider=None, model=None, local=False)
+    return CopilotStatusInfo(
+        configured=True, provider=settings.provider, model=settings.model, local=settings.local
+    )
 
 
 @router.post("/ask", response_model=CopilotAnswer)

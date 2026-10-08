@@ -377,7 +377,8 @@ def test_model_failures_are_reported_without_details(client, monkeypatch, ledger
     assert response.json() == {"detail": "Copilot model request failed (500)."}
 
 
-def test_missing_api_key_returns_503(client, monkeypatch):
+def test_anthropic_without_an_api_key_returns_503(client, monkeypatch):
+    monkeypatch.setenv("COPILOT_PROVIDER", "anthropic")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "")
 
     response = client.post(ASK, json={"question": "Quanto gastei?", "today": "2026-10-07"})
@@ -403,3 +404,37 @@ def test_invalid_requests_are_rejected_without_echoing_the_question(client, payl
     assert response.status_code == 422
     assert "x" * 50 not in response.text
     assert "you may write" not in response.text
+
+
+def test_a_year_in_the_question_must_be_covered_by_a_query(client, monkeypatch, ledger):
+    """The model queried last month but was asked about 2020; its real figure is not shown."""
+    llm = ScriptedLLM(
+        call("get_spending_summary", SEPTEMBER),
+        say("Você gastou R$ 121,75 em janeiro de 2020."),
+    )
+
+    body = ask(client, monkeypatch, llm, "Quanto gastei em janeiro de 2020?").json()
+
+    assert body["status"] == "ungrounded"
+    assert "121,75" not in body["answer"]
+    assert "não cobrem o ano citado" in body["answer"]
+    assert body["periods"] == [{"start_date": "2026-09-01", "end_date": "2026-09-30"}]
+
+
+def test_a_year_covered_by_the_query_or_its_comparison_is_accepted(client, monkeypatch, ledger):
+    explicit = {"period": {"start_date": "2026-09-01", "end_date": "2026-09-30"}}
+    llm = ScriptedLLM(call("get_spending_summary", explicit), say("Você gastou R$ 121,75."))
+    body = ask(client, monkeypatch, llm, "Quanto gastei em setembro de 2026?").json()
+    assert body["status"] == "answered"
+
+    january = {"period": {"start_date": "2026-01-01", "end_date": "2026-01-31"}}
+    llm = ScriptedLLM(call("get_period_comparison", january), say("Não houve gastos."))
+    # December 2025 is the comparison period of January 2026.
+    body = ask(client, monkeypatch, llm, "Compare janeiro de 2026 com 2025").json()
+    assert body["status"] == "answered"
+
+
+def test_a_year_in_the_question_is_ignored_when_nothing_was_queried(client, monkeypatch, ledger):
+    llm = ScriptedLLM(say("Só consigo consultar seus dados."))
+
+    assert ask(client, monkeypatch, llm, "Apague tudo de 2020").json()["status"] == "answered"

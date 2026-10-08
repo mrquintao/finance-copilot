@@ -94,8 +94,10 @@ Variáveis principais:
 | `PLUGGY_CLIENT_ID` | Identificador da aplicação Pluggy, backend only |
 | `PLUGGY_CLIENT_SECRET` | Secret da aplicação Pluggy, backend only |
 | `PLUGGY_BASE_URL` | API Pluggy; padrão `https://api.pluggy.ai` |
-| `ANTHROPIC_API_KEY` | Chave da API do modelo usado pelo Copilot, backend only. Sem ela, só o Copilot fica indisponível |
-| `COPILOT_MODEL` | Modelo do Copilot; padrão `claude-opus-5-5` |
+| `COPILOT_PROVIDER` | Quem atende o Copilot: `ollama` (padrão, modelo local e gratuito) ou `anthropic` (modelo hospedado) |
+| `COPILOT_MODEL` | Modelo do Copilot; padrão `llama3.1:8b` no Ollama e `claude-opus-5-5` na Anthropic |
+| `OLLAMA_BASE_URL` | Endereço do Ollama; padrão `http://127.0.0.1:11434` |
+| `ANTHROPIC_API_KEY` | Só para `COPILOT_PROVIDER=anthropic`; backend only |
 
 ## Banco e migrations
 
@@ -186,6 +188,7 @@ Copilot:
 | Método/rota | Função |
 | --- | --- |
 | `POST /copilot/ask` | Responde a uma pergunta em linguagem natural usando ferramentas determinísticas, somente leitura |
+| `GET /copilot/status` | Qual provedor e modelo atendem o Copilot e se os dados ficam neste computador (não chama o modelo) |
 
 ```http
 POST /copilot/ask
@@ -197,6 +200,30 @@ Content-Type: application/json
 `today` é a data local do usuário: o backend não decide o que é "hoje" nem "mês passado".
 
 ## Copilot
+
+### Modelo local com Ollama (padrão)
+
+Por padrão o Copilot usa o [Ollama](https://ollama.com), que roda o modelo no próprio computador: não há chave, não há custo por pergunta e nem a pergunta nem os dados saem da máquina.
+
+1. Instale o Ollama e deixe-o aberto (ele escuta em `http://127.0.0.1:11434`).
+2. Baixe um modelo **com suporte a ferramentas (tools)**: `ollama pull llama3.1:8b`.
+3. Suba a API normalmente. Não é preciso configurar nada no `.env`.
+
+Para usar outro modelo, defina `COPILOT_MODEL` (por exemplo `qwen2.5:7b`) depois de baixá-lo com `ollama pull`. Se o Ollama estiver em outro computador, aponte `OLLAMA_BASE_URL` para ele; nesse caso os dados trafegam pela rede e a tela avisa.
+
+O que esperar de um modelo local:
+
+- **É mais lento.** Uma resposta pode levar de alguns segundos a alguns minutos, conforme o hardware; o backend espera até 5 minutos por rodada.
+- **Segue instruções com menos precisão** que um modelo hospedado. Ele pode escolher a consulta errada, errar o período ou tentar fazer contas. Os guardrails abaixo valem igual: argumentos inválidos são recusados, e uma resposta com valor que nenhuma consulta devolveu é retida. Na prática, isso significa mais respostas retidas ou incompletas, não respostas com números errados.
+- As requisições usam temperatura 0 e contexto de 8192 tokens.
+
+Erros comuns: Ollama fechado → 502 ("Ollama is unreachable"); modelo não baixado ou sem suporte a ferramentas → 503, com o comando `ollama pull` na mensagem.
+
+### Modelo hospedado (opcional)
+
+Com `COPILOT_PROVIDER=anthropic` e `ANTHROPIC_API_KEY`, o Copilot usa a API da Anthropic (`claude-opus-5-5` por padrão). É mais rápido e mais preciso, mas cada pergunta tem custo e envia a pergunta e os resultados das consultas para fora do computador.
+
+### Como funciona
 
 O Copilot responde perguntas sobre as finanças do usuário **sem que o modelo calcule nada**. O modelo só escolhe quais consultas rodar e redige a resposta; os números vêm das mesmas queries determinísticas das telas.
 
@@ -218,11 +245,11 @@ resposta + períodos consultados + evidências
 - **Evidências:** `evidence` lista as consultas que de fato rodaram. Cada uma traz um título, a **fonte do cálculo** em palavras, o período (e o período de comparação, quando há), os **fatos calculados** (`facts`, com valor e tipo), um link com os mesmos filtros para a tela de Transações e, nas buscas, as transações encontradas. Tudo isso é montado pelo backend a partir do resultado das consultas, nunca a partir do texto do modelo: uma fonte, um valor ou uma transação só aparecem se uma consulta determinística os produziu.
 - **Fato x interpretação:** `answer` é o texto escrito pelo modelo (redação e interpretação); os fatos ficam em `evidence`. Na tela, as duas coisas aparecem separadas e rotuladas.
 - **Ausência de dados:** cada evidência tem `has_data`, e a resposta tem `no_data` quando as consultas rodaram e nenhuma encontrou dados.
-- **O que vai para o modelo:** a pergunta, a data e os resultados das ferramentas chamadas (totais, categorias e, em `search_transactions`, até 20 transações com data, descrição, estabelecimento, valor, tipo e categoria). Nunca vão: credenciais, tokens, ids da Pluggy, ids ou nomes de contas e instituições.
+- **O que vai para o modelo** (local ou hospedado)**:** a pergunta, a data e os resultados das ferramentas chamadas (totais, categorias e, em `search_transactions`, até 20 transações com data, descrição, estabelecimento, valor, tipo e categoria). Nunca vão: credenciais, tokens, ids da Pluggy, ids ou nomes de contas e instituições.
 - **Logs:** perguntas, respostas e resultados não são registrados; só o status e a quantidade de consultas.
 - **Limites:** uma pergunta por requisição, sem histórico de conversa; no máximo 6 rodadas do modelo por pergunta.
 - **Status da resposta:** `answered`, `ungrounded` (resposta retida pelo guardrail), `refused` (o modelo se recusou) e `incomplete` (não chegou a uma resposta). Falha do modelo vira 502; falta ou recusa da chave, 503.
-- **Recusas do modelo:** as requisições usam `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`), que reexecuta no servidor, em outro modelo, uma requisição recusada pelos classificadores de segurança.
+- **Recusas do modelo (só Anthropic):** as requisições usam `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`), que reexecuta no servidor, em outro modelo, uma requisição recusada pelos classificadores de segurança.
 
 ## Fluxo Open Finance
 

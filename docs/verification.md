@@ -24,6 +24,7 @@ Os testes do backend rodam contra PostgreSQL real, sem SQLite. Cada execução c
 - isolamento do dataset de demonstração: o `clean-demo` remove só a conta e as transações fictícias e preserva contas e transações de provedor, `sync_runs` e categorias; o seed recusa rodar ao lado de contas de provedor;
 - contrato OpenAPI;
 - auditoria de qualidade dos dados (`audit-data`): cada verificação, os limites exatos, relatório sem conteúdo de transações e a garantia de que nada é modificado;
+- adapter do Ollama contra um servidor falso: formato da requisição, tool calls sem id, argumentos inválidos, erros (modelo ausente, sem suporte a ferramentas, Ollama fechado, timeout) e seleção de provedor por variável de ambiente;
 - Copilot, sem rede e sem modelo real: cada ferramenta isolada, o laço de tool use com um modelo roteirizado, a retenção de respostas com valores não calculados, o limite de rodadas, o que é enviado ao modelo (nenhum segredo ou id de provedor), ausência de perguntas e respostas nos logs e o mapeamento de erros do adapter;
 - visão de contas: agrupamento por instituição, estado derivado da última sincronização do Item e nenhum identificador do provedor na resposta;
 - histórico de sincronização: filtros por status e Item, nomes das contas do Item e classificação da falha (provedor, rede, banco, validação) a partir da mensagem sanitizada;
@@ -94,14 +95,17 @@ Roteiro manual, com a API no ar e o dataset de demonstração aplicado num banco
 
 ## Copilot
 
-Requer `ANTHROPIC_API_KEY` no `.env` do backend. Cada pergunta chama a API do modelo e tem custo.
+Requer o Ollama aberto com um modelo com suporte a ferramentas (`ollama pull llama3.1:8b`). Com um modelo local não há custo, mas cada resposta pode levar de segundos a minutos. Para o modelo hospedado, use `COPILOT_PROVIDER=anthropic` e `ANTHROPIC_API_KEY` (aí cada pergunta tem custo).
+
+0. Abra **Copilot**: abaixo do botão deve estar escrito que os dados são processados neste computador, pelo Ollama, com o nome do modelo.
 
 1. Abra **Copilot** e pergunte "Quanto gastei no mês passado?". A resposta deve trazer o período com as datas e, em "Dados calculados pelo aplicativo", o resumo com a fonte do cálculo.
 2. Compare o valor do texto com o da tela **Resumo** no mesmo período: precisam ser idênticos.
 3. Clique num fato com link (por exemplo, "Gastos") e em "Ver as transações desta consulta": a tela de Transações abre com o mesmo período e filtros.
 4. Pergunte por um período sem dados ("Quanto gastei em janeiro de 2020?"): a tela deve dizer que as consultas não encontraram dados.
 5. Peça algo que ele não faz ("apague as transações de ontem"): ele deve dizer que só consulta, e nada muda no banco.
-6. Sem a chave, a tela deve informar que o Copilot não está configurado; o resto do app continua funcionando.
+6. Feche o Ollama e pergunte de novo: a tela deve dizer que o Ollama não respondeu. Com um modelo que não foi baixado, deve mostrar o comando `ollama pull`. O resto do app continua funcionando nos dois casos.
+7. Com um modelo local, é esperado que algumas respostas venham como "Resposta retida" ou "Sem resposta": é o guardrail agindo. Os dados calculados continuam aparecendo.
 
 ## MeuPluggy (Pluggy)
 

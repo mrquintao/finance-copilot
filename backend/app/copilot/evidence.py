@@ -168,8 +168,22 @@ def build_evidence(
             type=arguments.get("type"),
             category_id=ids.get(category.strip().lower()) if category else None,
         )
+        # The filters are spelled out: a filter the user did not ask for narrows the totals,
+        # and this is where they can see that it was applied.
+        types = {"debit": "despesas", "credit": "receitas", "transfer": "transferências"}
+        applied = [
+            f'texto "{link.q}"' if link.q else None,
+            f"categoria {category.strip()}" if category else None,
+            f"só {types[arguments['type']]}" if arguments.get("type") else None,
+        ]
+        filters = " • ".join(item for item in applied if item)
         facts = [
-            Fact(label="Transações encontradas", value=str(result["total_count"]), kind="count")
+            Fact(
+                label="Transações encontradas",
+                value=str(result["total_count"]),
+                kind="count",
+                detail=f"Filtros: {filters}" if filters else "Sem filtros além do período",
+            )
         ]
         labels = {"debit": "Total em despesas", "credit": "Total em receitas"}
         labels["transfer"] = "Total em transferências"
