@@ -8,6 +8,7 @@ call them directly.
 
 from __future__ import annotations
 
+import re
 from calendar import monthrange
 from dataclasses import dataclass
 from datetime import date
@@ -45,6 +46,37 @@ def resolve_preset(preset: Preset, today: date) -> tuple[date, date]:
     return month_bounds(current - 2)[0], month_bounds(current)[1]
 
 
+# What models write in an optional field they meant to leave out.
+EMPTY_WORDS = {"", "none", "null", "all", "any", "todas", "todos"}
+ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+ISO_MONTH = re.compile(r"(\d{4})-(\d{2})")
+ISO_YEAR = re.compile(r"\d{4}")
+
+
+def parse_period_text(text: str) -> dict[str, str]:
+    """A period written as one string, the form small models handle most reliably.
+
+    "previous_month" (a preset), "2020-01" (a month), "2020" (a year), "2020-01-15" (a day)
+    or two ISO dates in any order of punctuation ("2020-01-01..2020-03-31"). Anything else
+    is returned as an unknown preset, so validation rejects it instead of guessing.
+    """
+    value = text.strip()
+    dates = ISO_DATE.findall(value)
+    if len(dates) == 2:
+        return {"start_date": dates[0], "end_date": dates[1]}
+    if len(dates) == 1 and dates[0] == value:
+        return {"start_date": value, "end_date": value}
+    month = ISO_MONTH.fullmatch(value)
+    if month:
+        year, number = int(month.group(1)), int(month.group(2))
+        if 1 <= number <= 12 and year >= 1:
+            last = monthrange(year, number)[1]
+            return {"start_date": f"{value}-01", "end_date": f"{value}-{last:02d}"}
+    if ISO_YEAR.fullmatch(value) and int(value) >= 1:
+        return {"start_date": f"{value}-01-01", "end_date": f"{value}-12-31"}
+    return {"preset": value}
+
+
 class PeriodArg(BaseModel):
     """Either a named preset or explicit inclusive bounds, never both."""
 
@@ -52,6 +84,11 @@ class PeriodArg(BaseModel):
     preset: Preset | None = None
     start_date: date | None = None
     end_date: date | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def from_text(cls, value: Any) -> Any:
+        return parse_period_text(value) if isinstance(value, str) else value
 
     @model_validator(mode="after")
     def one_form(self) -> PeriodArg:
@@ -87,7 +124,42 @@ class SearchArguments(BaseModel):
     text: str | None = Field(default=None, max_length=100)
     category: str | None = Field(default=None, max_length=80)
     type: Literal["debit", "credit", "transfer"] | None = None
-    limit: int = Field(default=10, ge=1, le=MAX_TRANSACTIONS)
+    limit: int = Field(default=10, ge=1)
+
+    @model_validator(mode="before")
+    @classmethod
+    def drop_placeholders(cls, value: Any) -> Any:
+        """Local models fill optional fields with "", "None" or 0 instead of omitting them.
+
+        Those are not values, so they are treated as absent. Real but wrong values are kept
+        and rejected by validation.
+        """
+        if not isinstance(value, dict):
+            return value
+        cleaned = dict(value)
+        for name in ("text", "category", "type"):
+            item = cleaned.get(name)
+            if item is None or (isinstance(item, str) and item.strip().lower() in EMPTY_WORDS):
+                cleaned.pop(name, None)
+        limit = cleaned.get("limit")
+        if limit is None or limit in (0, "0", ""):
+            cleaned.pop("limit", None)
+        return cleaned
+
+    @model_validator(mode="after")
+    def forgiving(self) -> SearchArguments:
+        # Asking for more rows than allowed is not an error: the totals cover every match
+        # anyway, so the list is simply capped.
+        self.limit = min(self.limit, MAX_TRANSACTIONS)
+        # Models often repeat the merchant in `category` ("Uber" / "Uber"). The same word in
+        # both can only mean the text search, so the redundant category is dropped.
+        if (
+            self.category
+            and self.text
+            and self.category.strip().lower() == self.text.strip().lower()
+        ):
+            self.category = None
+        return self
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,7 +263,13 @@ def search_transactions(session: Session, args: SearchArguments, today: date) ->
             )
             if category_id is None:
                 return ToolOutcome(
-                    result={"error": "Unknown category. Call list_categories for valid names."},
+                    result={
+                        "error": (
+                            "Unknown category. To look for a store or a word, call "
+                            "search_transactions again with `text` and without `category`. "
+                            "For valid category names, call list_categories."
+                        )
+                    },
                     arguments=arguments,
                     is_error=True,
                 )
@@ -244,18 +322,16 @@ def search_transactions(session: Session, args: SearchArguments, today: date) ->
     )
 
 
+# One string instead of a nested object: local models fill it in far more reliably. The
+# object form ({"preset": ...} or {"start_date": ..., "end_date": ...}) is still accepted.
 PERIOD_SCHEMA: dict[str, Any] = {
-    "type": "object",
+    "type": "string",
     "description": (
-        "Inclusive period. Prefer a preset when the user says 'this month', 'last month' or "
-        "'last 3 months'; otherwise give both dates as YYYY-MM-DD. Never both forms."
+        'The period, as ONE of: "current_month" (this month), "previous_month" (last month), '
+        '"last_3_months", a month as "YYYY-MM", a year as "YYYY", or a range as '
+        '"YYYY-MM-DD..YYYY-MM-DD". Examples: January 2020 is "2020-01"; the year 2025 is '
+        '"2025"; 1 to 15 March 2026 is "2026-03-01..2026-03-15".'
     ),
-    "properties": {
-        "preset": {"type": "string", "enum": ["current_month", "previous_month", "last_3_months"]},
-        "start_date": {"type": "string", "format": "date"},
-        "end_date": {"type": "string", "format": "date"},
-    },
-    "additionalProperties": False,
 }
 
 
@@ -333,10 +409,17 @@ TOOLS = {
                 "type": "object",
                 "properties": {
                     "period": PERIOD_SCHEMA,
-                    "text": {"type": "string", "description": "Literal text to look for."},
+                    "text": {
+                        "type": "string",
+                        "description": "A store, merchant or word to look for, e.g. 'Uber'.",
+                    },
                     "category": {
                         "type": "string",
-                        "description": "Exact category name, or 'Sem categoria'.",
+                        "description": (
+                            "OMIT unless the user names a category. An exact category name "
+                            "from list_categories. It narrows the search, so adding it when "
+                            "the user did not ask makes the totals too small."
+                        ),
                     },
                     "type": {"type": "string", "enum": ["debit", "credit", "transfer"]},
                     "limit": {"type": "integer", "minimum": 1, "maximum": MAX_TRANSACTIONS},

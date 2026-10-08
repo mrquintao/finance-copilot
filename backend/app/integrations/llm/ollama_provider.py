@@ -27,6 +27,9 @@ from app.integrations.llm.provider import (
 
 # Ollama's default context window is small; tool definitions plus results need more room.
 CONTEXT_TOKENS = 8192
+# Loading the model into memory is the slowest step on a CPU, so it stays loaded for a while
+# after each question instead of Ollama's default of five minutes.
+KEEP_ALIVE = "30m"
 # Some reasoning models write their reasoning inline instead of in the `thinking` field.
 INLINE_THINKING = re.compile(r"<think>.*?</think>", re.DOTALL)
 
@@ -60,6 +63,7 @@ class OllamaProvider(LLMProvider):
         body = {
             "model": self._model,
             "stream": False,
+            "keep_alive": KEEP_ALIVE,
             "messages": [{"role": "system", "content": system}, *self._messages(conversation)],
             "tools": [
                 {

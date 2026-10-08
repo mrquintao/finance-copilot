@@ -77,6 +77,7 @@ def test_request_follows_the_ollama_chat_api():
     assert fake.requests[0] == {
         "model": "llama3.1:8b",
         "stream": False,
+        "keep_alive": "30m",
         "messages": [
             {"role": "system", "content": "system prompt"},
             {"role": "user", "content": "Quanto gastei?"},
