@@ -1,194 +1,244 @@
+<div align="center">
+
+<img src="web/public/icons/icon.svg" alt="" width="84" height="84">
+
 # Finance Copilot
 
-Aplicativo pessoal de finanças com cliente web (React, instalável no iPhone como PWA) e backend FastAPI + PostgreSQL. O **MVP 0.2** entregou o core financeiro e a sincronização Open Finance via Pluggy. O **MVP 0.3 — Produção**, em andamento, começa pelo cliente web em `web/`, que substitui o app iOS.
+**Finanças pessoais com Open Finance e um assistente de IA que só fala de números que o app calculou.**
 
-O roadmap completo está em [docs/vision.md](docs/vision.md).
+[![Backend CI](https://github.com/mrquintao/finance-copilot/actions/workflows/backend.yml/badge.svg)](https://github.com/mrquintao/finance-copilot/actions/workflows/backend.yml)
+[![Web CI](https://github.com/mrquintao/finance-copilot/actions/workflows/web.yml/badge.svg)](https://github.com/mrquintao/finance-copilot/actions/workflows/web.yml)
+[![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-173f35)](LICENSE)
+
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-4169E1?logo=postgresql&logoColor=white)
+![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white)
+![Ollama](https://img.shields.io/badge/Ollama-local-000000?logo=ollama&logoColor=white)
+
+<img src="docs/screenshots/hero.png" alt="Painel de resumo no desktop e a tela do Copilot no celular" width="100%">
+
+</div>
+
+## Sobre
+
+O Finance Copilot junta as contas de várias instituições num só lugar, categoriza os gastos e responde perguntas como *"quanto gastei com mercado em setembro?"* ou *"gastei mais que no mês anterior?"*.
+
+A decisão central do projeto é que **o modelo de linguagem nunca calcula dinheiro**. Ele só escolhe quais consultas rodar e redige a resposta. Os valores vêm das mesmas queries SQL determinísticas que alimentam as telas. Antes de mostrar a resposta, o backend confere cada valor em reais do texto contra o resultado dessas consultas. Se aparecer um número que nenhuma consulta devolveu, a resposta é retida.
+
+É um projeto pessoal, de um usuário só, que roda na própria máquina. Por padrão o Copilot usa um modelo local via [Ollama](https://ollama.com), e nem a pergunta nem os dados saem do computador.
+
+## Funcionalidades
+
+| Área | O que faz |
+| --- | --- |
+| 🏦 **Open Finance** | Conexão pelo widget Pluggy Connect (conta MeuPluggy), importação paginada de contas e transações, deduplicação por id externo e histórico de sincronizações com falhas classificadas. |
+| 📊 **Resumo** | Gastos, receitas e gastos por categoria em qualquer período, comparação com o período anterior equivalente e projeção do gasto até o fim do mês. |
+| 🔎 **Transações** | Lista paginada com busca por descrição ou estabelecimento e filtros por conta, categoria e tipo. O período e os filtros ficam na URL. |
+| 🧾 **Contas** | Visão consolidada por instituição, com estado da última sincronização e contagem de transações. |
+| 💬 **Copilot** | Perguntas em linguagem natural, respostas com o período considerado, a fonte de cada cálculo e links para as transações que sustentam a resposta. |
+| 💡 **Insights e auditoria** | Insights por regras fixas (sem LLM) e um relatório de qualidade dos dados, somente leitura, que aponta duplicatas, lacunas de sincronização e valores suspeitos. |
+| 🌓 **Web e PWA** | Interface responsiva com tema claro e escuro, instalável no iPhone pela tela de início. |
+
+## Telas
+
+Todas as telas abaixo usam o dataset de demonstração, que tem dados fictícios.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/dashboard-desktop.png" alt="Resumo do mês com gastos por categoria e comparação com o período anterior"><br><sub><b>Resumo</b>: gastos por categoria e comparação com o mês anterior</sub></td>
+    <td width="50%"><img src="docs/screenshots/copilot-desktop.png" alt="Copilot respondendo uma pergunta com os dados calculados abaixo"><br><sub><b>Copilot</b>: texto do modelo separado dos dados calculados pelo app</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/transactions-desktop.png" alt="Lista de transações com busca e filtros"><br><sub><b>Transações</b>: busca, filtros e paginação</sub></td>
+    <td><img src="docs/screenshots/transaction-detail-desktop.png" alt="Detalhe de uma transação"><br><sub><b>Detalhe</b>: cada transação tem rota própria</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/accounts-desktop.png" alt="Contas agrupadas por instituição"><br><sub><b>Contas</b>: agrupadas por instituição</sub></td>
+    <td><img src="docs/screenshots/connections-desktop.png" alt="Tela de conexões Open Finance"><br><sub><b>Conexões</b>: conectar instituição e sincronizar de novo</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/dashboard-desktop-dark.png" alt="Resumo no tema escuro"><br><sub><b>Tema escuro</b>: segue o sistema ou a escolha do usuário</sub></td>
+    <td><img src="docs/screenshots/copilot-desktop-dark.png" alt="Copilot no tema escuro"><br><sub><b>Copilot</b> no tema escuro</sub></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/screenshots/dashboard-mobile.png" alt="Resumo no celular" width="23%">
+  <img src="docs/screenshots/transactions-mobile.png" alt="Transações no celular" width="23%">
+  <img src="docs/screenshots/accounts-mobile.png" alt="Contas no celular" width="23%">
+  <img src="docs/screenshots/copilot-mobile.png" alt="Copilot no celular" width="23%">
+</p>
 
 ## Arquitetura
 
-```text
-Navegador / PWA: React + TypeScript (web/)
-        |
-        | REST/JSON em /api (mesma origem)
-        v
-      FastAPI
-        |
-        +-- transactions / categories / analytics
-        +-- sync / sync_runs
-        |
-        +-- PostgreSQL
-        |
-        +-- FinancialDataProvider
-                 |
-                 +-- PluggyProvider -> Pluggy API -> conector MeuPluggy (200) -> bancos
+```mermaid
+flowchart LR
+    UI["Navegador / PWA<br/>React + TypeScript"]
+
+    subgraph api["Backend · FastAPI"]
+        direction TB
+        S["sync · sync_runs"]
+        R["transactions · accounts<br/>categories · analytics"]
+        C["Copilot"] --> T["ferramentas<br/>somente leitura"]
+    end
+
+    UI -- "REST /api" --> api
+    S -- "PluggyProvider" --> PL["Pluggy API"] --> MP["MeuPluggy"] --> BK["Bancos"]
+    S --> DB[("PostgreSQL")]
+    R --> DB
+    T --> DB
+    C <-. "escolhe consultas<br/>e redige" .-> LLM["Ollama (local)<br/>ou Anthropic"]
 ```
 
-As credenciais do Pluggy ficam **somente no backend**. O cliente web recebe apenas um Connect Token de curta duração, gerado pelo backend, e abre o widget do Pluggy com ele. O banco continua sendo a fonte de verdade para contas e transações normalizadas.
+- As credenciais da Pluggy ficam **só no backend**. O cliente web recebe apenas um Connect Token de curta duração, gerado pelo backend, e abre o widget com ele.
+- O cliente chama a API sempre em `/api`, na própria origem. Em desenvolvimento o Vite faz o proxy, então o backend não habilita CORS.
+- O acesso ao Open Finance passa pela abstração `FinancialDataProvider`. O `PluggyProvider` é a implementação atual.
 
-O cliente web chama a API sempre em `/api`, na própria origem. Em desenvolvimento, o Vite faz o proxy para o backend, então o backend não habilita CORS.
+### Stack
 
-## Escopo implementado
+| Camada | Tecnologias |
+| --- | --- |
+| Backend | Python 3.12, FastAPI, Pydantic 2, SQLAlchemy 2, Alembic, httpx |
+| Banco | PostgreSQL 18, dinheiro em `NUMERIC(18,2)` |
+| Web | React 19, TypeScript strict, Vite, React Router, TanStack Query, Recharts, Tailwind CSS |
+| IA | Ollama (padrão, local) ou API da Anthropic, atrás de uma interface `LLMProvider` |
+| Qualidade | pytest, Ruff, Vitest, Testing Library, MSW, ESLint, GitHub Actions |
 
-### MVP 0.1 — Core financeiro
+## Como o Copilot evita números inventados
 
-- FastAPI + PostgreSQL + Alembic.
-- Contas, categorias e transações em BRL.
-- Dinheiro com `Decimal`/`NUMERIC(18,2)`, nunca `float`.
-- API de transações, filtros, paginação e detalhe.
-- Analytics de gastos/receitas e gastos por categoria.
-- Dashboard, lista de transações e detalhe no cliente.
-- Dataset de demonstração determinístico (126 transações fictícias de abril a setembro de 2026), só para desenvolvimento.
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as Usuário
+    participant A as Backend
+    participant M as Modelo
+    participant DB as PostgreSQL
 
-### MVP 0.2 — Open Finance
-
-- Abstração `FinancialDataProvider`.
-- Adapter `PluggyProvider` com autenticação server-side.
-- Connect Token gerado pelo backend.
-- Conexão pelo widget Pluggy Connect, aberto pelo cliente web.
-- Importação de contas BRL.
-- Importação paginada de transações POSTED via `/v2/transactions`.
-- Normalização de débito/crédito, data, merchant e categorias.
-- Deduplicação de contas por `(provider, provider_account_id)`.
-- Deduplicação/upsert de transações por `(account_id, external_id)`.
-- Histórico em `sync_runs`, incluindo contagens e falhas.
-- Retry de erros transitórios/429/5xx e renovação de API key após 401.
-- Tela **Conexões** para conectar instituição e sincronizar novamente.
-
-### MVP 0.3 — Produção (em andamento)
-
-- Cliente web em `web/`: React + TypeScript (strict) + Vite, React Router, TanStack Query, Recharts e Tailwind.
-- Dashboard com filtro de período (mês atual, mês anterior, últimos 3 meses e personalizado), cards e gráfico por categoria.
-- Transações paginadas e detalhe em rota própria (link compartilhável).
-- Conexões com a conta MeuPluggy pelo widget Pluggy Connect, "Sincronizar novamente" e histórico de sincronizações.
-- Manifest de PWA e ícones para "Adicionar à tela de início" (sem service worker por enquanto).
-- Tela **Copilot**: pergunta em linguagem natural, texto do modelo separado dos dados calculados, período e fonte de cada cálculo e links para as transações que sustentam a resposta.
-- Ainda **sem autenticação**: ela é a próxima entrega deste marco.
-
-## Requisitos
-
-- Python **3.12+**.
-- PostgreSQL **18** ou Docker + Docker Compose v2.
-- Node.js **LTS** e npm, para o cliente web.
-- Para dados reais: aplicação criada na Pluggy (`PLUGGY_CLIENT_ID`/`PLUGGY_CLIENT_SECRET`) e uma conta MeuPluggy com as suas instituições já conectadas.
-
-## Configuração
-
-Copie `.env.example` para `.env` e ajuste a senha do PostgreSQL. Para Open Finance, preencha também:
-
-```env
-PLUGGY_CLIENT_ID=seu_client_id
-PLUGGY_CLIENT_SECRET=seu_client_secret
-PLUGGY_BASE_URL=https://api.pluggy.ai
+    U->>A: pergunta + data de hoje
+    A->>M: pergunta + ferramentas disponíveis
+    M->>A: chamar get_spending_by_category(period="2026-09")
+    A->>DB: consulta determinística
+    DB-->>A: totais (dinheiro como string decimal)
+    A->>M: resultado da ferramenta
+    M->>A: texto da resposta
+    A->>A: todo valor em R$ do texto está nos resultados?<br/>e todo ano citado foi consultado?
+    A-->>U: resposta + períodos + evidências<br/>(ou resposta retida, com as evidências)
 ```
 
-Nunca coloque essas credenciais no cliente web, no Git ou em screenshots/logs.
+- **Somente leitura.** Existem cinco ferramentas, todas de consulta: `get_spending_summary`, `get_spending_by_category`, `get_period_comparison`, `search_transactions` e `list_categories`. Nenhuma escreve, apaga, categoriza ou sincroniza.
+- **Valores conferidos.** O backend extrai os valores em reais do texto e os compara, como decimais exatos, com os valores que as ferramentas devolveram na mesma pergunta. Um valor que não veio de nenhuma consulta, seja inventado ou somado pelo próprio modelo, faz a resposta ser retida (status `ungrounded`). Também é retida a resposta que cita um ano que nenhuma consulta cobriu.
+- **Evidências montadas pelo backend.** `evidence` lista as consultas que de fato rodaram. Cada uma traz a fonte do cálculo, o período, os fatos calculados, os filtros aplicados e um link para a tela de Transações com os mesmos filtros. Nada disso vem do texto do modelo.
+- **Fato separado de interpretação.** Na tela, o texto do modelo e os dados calculados aparecem separados e rotulados.
+- **Tolerante a modelos pequenos.** O período é passado como uma string simples (`"2026-09"`, `"2025"`, `"previous_month"`, `"2026-03-01..2026-03-15"`), e valores de preenchimento como `""` ou `"None"` em campos opcionais são tratados como ausentes.
+- **O que vai para o modelo:** a pergunta, a data e os resultados das ferramentas chamadas. Nunca vão credenciais, tokens, ids da Pluggy ou nomes de contas e instituições. Perguntas, respostas e resultados não são registrados em log.
+- **Limites:** uma pergunta por requisição, sem histórico de conversa, e no máximo 6 rodadas do modelo por pergunta.
 
-Variáveis principais:
+## Rodando localmente
+
+**Requisitos:** Python 3.12+, Node.js LTS e Docker com Compose v2 (ou um PostgreSQL 18 próprio). Para o Copilot, [Ollama](https://ollama.com) com um modelo que suporte ferramentas.
+
+```sh
+# 1. Configuração
+cp .env.example .env          # escolha uma senha para o PostgreSQL
+
+# 2. Backend
+python -m venv .venv
+source .venv/bin/activate     # Windows: .venv\Scripts\activate
+pip install -e "backend[test]"
+python scripts/dev.py db      # sobe o PostgreSQL no Docker
+python scripts/dev.py migrate
+python scripts/dev.py seed-demo   # opcional: dataset fictício
+python scripts/dev.py api     # http://127.0.0.1:8000
+
+# 3. Web (outro terminal)
+cd web
+npm install
+npm run dev                   # http://localhost:5173
+
+# 4. Copilot (opcional)
+ollama pull llama3.1:8b
+```
+
+O dataset de demonstração cobre abril a setembro de 2026. Para vê-lo, escolha **Personalizado** nesse intervalo.
+
+Para subir tudo em containers: `docker compose up -d --build`. Os dados ficam no volume `postgres_data` e sobrevivem a `docker compose down`. Já `docker compose down -v` apaga o volume e todos os dados financeiros junto.
+
+<details>
+<summary><b>Comandos do projeto</b></summary>
+
+| Comando | Função |
+| --- | --- |
+| `python scripts/dev.py db` / `up` / `down` | PostgreSQL ou a stack inteira no Docker |
+| `python scripts/dev.py migrate` | Aplica as migrations |
+| `python scripts/dev.py api` | Sobe a API |
+| `python scripts/dev.py test` / `lint` | Testes e lint do backend |
+| `python scripts/dev.py seed-demo` | Insere o dataset fictício (recusa rodar se houver contas importadas) |
+| `python scripts/dev.py check-demo` | Mostra o que o `clean-demo` removeria, sem remover |
+| `python scripts/dev.py clean-demo` | Remove só o dataset fictício, pelos UUIDs fixos do seed |
+| `python scripts/dev.py audit-data` | Relatório de qualidade dos dados, somente leitura |
+| `npm run dev` / `build` | Servidor de desenvolvimento / build de produção em `web/dist` |
+| `npm run lint` / `typecheck` / `test` | ESLint, TypeScript strict e Vitest com a API mockada (MSW) |
+
+</details>
+
+<details>
+<summary><b>Variáveis de ambiente</b></summary>
 
 | Variável | Uso |
 | --- | --- |
 | `DATABASE_URL` | Conexão PostgreSQL do backend |
-| `TEST_DATABASE_URL` | Banco utilizado pelos testes locais |
-| `BACKEND_BIND` | `127.0.0.1` por padrão; `0.0.0.0` apenas em LAN confiável |
+| `TEST_DATABASE_URL` | Banco dos testes (cada execução usa um schema temporário e o apaga no fim) |
+| `BACKEND_BIND` | `127.0.0.1` por padrão; `0.0.0.0` só em LAN confiável |
 | `BACKEND_PORT` | Porta HTTP; padrão 8000 |
-| `PLUGGY_CLIENT_ID` | Identificador da aplicação Pluggy, backend only |
-| `PLUGGY_CLIENT_SECRET` | Secret da aplicação Pluggy, backend only |
+| `PLUGGY_CLIENT_ID` / `PLUGGY_CLIENT_SECRET` | Credenciais da aplicação Pluggy, só no backend |
 | `PLUGGY_BASE_URL` | API Pluggy; padrão `https://api.pluggy.ai` |
-| `COPILOT_PROVIDER` | Quem atende o Copilot: `ollama` (padrão, modelo local e gratuito) ou `anthropic` (modelo hospedado) |
-| `COPILOT_MODEL` | Modelo do Copilot; padrão `llama3.1:8b` no Ollama e `claude-opus-5-5` na Anthropic |
-| `OLLAMA_BASE_URL` | Endereço do Ollama; padrão `http://127.0.0.1:11434` |
-| `ANTHROPIC_API_KEY` | Só para `COPILOT_PROVIDER=anthropic`; backend only |
+| `COPILOT_PROVIDER` | `ollama` (padrão) ou `anthropic` |
+| `COPILOT_MODEL` | Padrão `llama3.1:8b` no Ollama e `claude-opus-5-5` na Anthropic |
+| `OLLAMA_BASE_URL` | Padrão `http://127.0.0.1:11434` |
+| `ANTHROPIC_API_KEY` | Só com `COPILOT_PROVIDER=anthropic`, só no backend |
+| `API_PROXY_TARGET` | Em `web/.env`: para onde o Vite repassa `/api` |
 
-## Banco e migrations
+</details>
 
-A migration `0001` cria o core financeiro. A `0002` adiciona metadados do provedor às contas e a tabela `sync_runs`.
+<details>
+<summary><b>Copilot: modelo local ou hospedado</b></summary>
 
-No host:
+**Ollama (padrão).** O modelo roda no próprio computador: não há chave, não há custo por pergunta e os dados não saem da máquina. Instale o Ollama, deixe-o aberto e baixe um modelo com suporte a ferramentas (`ollama pull llama3.1:8b`). Para usar outro, defina `COPILOT_MODEL`, por exemplo `qwen2.5:7b`.
 
-```sh
-python -m alembic -c backend/alembic.ini upgrade head
-```
+Um modelo local é mais lento (de segundos a minutos por resposta, conforme o hardware) e segue instruções com menos precisão. Os guardrails valem do mesmo jeito: na prática, isso significa mais respostas retidas ou incompletas, não respostas com números errados. O modelo fica carregado por 30 minutos entre perguntas.
 
-Com os comandos do projeto:
+**Anthropic (opcional).** Com `COPILOT_PROVIDER=anthropic` e `ANTHROPIC_API_KEY`, o Copilot fica mais rápido e preciso, mas cada pergunta tem custo e envia a pergunta e os resultados das consultas para fora do computador. A tela avisa quando isso acontece.
 
-```powershell
-.\.venv\Scripts\python.exe scripts/dev.py migrate
-.\.venv\Scripts\python.exe scripts/dev.py api
-```
+Erros comuns: Ollama fechado retorna 502; modelo não baixado ou sem suporte a ferramentas retorna 503, com o comando `ollama pull` na mensagem.
 
-Com Docker:
-
-```sh
-docker compose up -d --build
-```
-
-### Persistência
-
-O PostgreSQL do `compose.yaml` grava no volume nomeado `postgres_data`. Reiniciar a API, reiniciar o container ou rodar `docker compose down` **não** apaga nada: contas, transações e histórico de sincronização continuam lá na próxima subida.
-
-`docker compose down -v` remove o volume e, com ele, todos os dados financeiros. Não use esse comando num banco com dados reais.
-
-### Dados de demonstração
-
-O dataset fictício (conta "Conta pessoal (exemplo)" do "Banco Exemplo", com 126 transações) existe para prints, roteiro manual e desenvolvimento num banco **sem** dados reais. Ele não faz parte da instalação e nada o insere automaticamente.
-
-```powershell
-.\.venv\Scripts\python.exe scripts/dev.py seed-demo    # insere o dataset fictício
-.\.venv\Scripts\python.exe scripts/dev.py check-demo   # mostra o que o clean-demo removeria, sem remover
-.\.venv\Scripts\python.exe scripts/dev.py clean-demo   # remove só o dataset fictício
-```
-
-- `seed-demo` recusa rodar se o banco já tiver alguma conta importada de um provedor (`provider` preenchido). Para forçar num banco de desenvolvimento, de propósito: `python -m app.db.seed --allow-provider-data`. O comando antigo `seed` continua existindo como sinônimo.
-- `clean-demo` é a forma suportada de tirar o dataset fictício de um banco que também tem dados reais. Ele apaga a conta de demonstração e as transações dela pelos UUIDs fixos que o seed gera, não por nome nem por `provider IS NULL`. Contas e transações importadas, `sync_runs` e categorias não são tocados. Se a conta de demonstração tiver qualquer transação que o seed não criou, o comando aborta sem apagar nada. Pode ser rodado mais de uma vez.
-- Com dados fictícios e reais no mesmo banco, as telas somam tudo: a API não filtra por origem. Por isso os dois não devem conviver.
+</details>
 
 ## API
 
-Core financeiro:
+<details>
+<summary><b>Rotas</b></summary>
 
-| Método/rota | Função |
+| Método e rota | Função |
 | --- | --- |
-| `GET /health` | Readiness do backend + PostgreSQL |
-| `GET /transactions` | Lista paginada; filtros combináveis por período, `q` (texto em descrição ou estabelecimento), `account_id`, `category_id` e `type` |
+| `GET /health` | Readiness do backend e do PostgreSQL |
+| `GET /transactions` | Lista paginada; filtros por período, `q` (texto), `account_id`, `category_id` e `type` |
 | `GET /transactions/{id}` | Detalhe da transação |
 | `GET /categories` | Categorias |
-| `GET /accounts` | Contas agrupadas por instituição, com estado da sincronização e contagem de transações |
+| `GET /accounts` | Contas por instituição, com estado da sincronização |
 | `GET /analytics/spending-summary` | Gastos, receitas e contagens |
 | `GET /analytics/spending-by-category` | Gastos por categoria |
-| `GET /analytics/period-comparison` | Gastos, receitas, contagem e categorias contra o período anterior equivalente |
-| `GET /analytics/insights` | Insights por regras fixas sobre a comparação de períodos, sem LLM |
-| `GET /analytics/month-projection` | Projeção do gasto até o fim do mês de `as_of` (estimativa, com as premissas na resposta) |
-
-Open Finance:
-
-| Método/rota | Função |
-| --- | --- |
-| `POST /sync/connect-token` | Gera Connect Token usando credenciais server-side |
-| `POST /sync` | Sincroniza um `item_id` específico |
-| `POST /sync/refresh` | Sincroniza de novo todos os Items já conhecidos; a falha de um não interrompe os outros |
-| `GET /sync/runs` | Últimas 50 execuções, com contas do Item e tipo da falha; filtros `status` e `item_id` |
-
-Exemplo de sincronização direta:
-
-```http
-POST /sync
-Content-Type: application/json
-
-{
-  "item_id": "item-id-retornado-pelo-pluggy",
-  "start_date": "2026-01-01",
-  "end_date": "2026-09-30"
-}
-```
-
-As datas são opcionais e inclusivas. Intervalo invertido retorna 422.
-
-Copilot:
-
-| Método/rota | Função |
-| --- | --- |
-| `POST /copilot/ask` | Responde a uma pergunta em linguagem natural usando ferramentas determinísticas, somente leitura |
-| `GET /copilot/status` | Qual provedor e modelo atendem o Copilot e se os dados ficam neste computador (não chama o modelo) |
+| `GET /analytics/period-comparison` | Comparação com o período anterior equivalente |
+| `GET /analytics/insights` | Insights por regras fixas, sem LLM |
+| `GET /analytics/month-projection` | Projeção do gasto até o fim do mês, com as premissas na resposta |
+| `POST /sync/connect-token` | Gera um Connect Token com as credenciais do backend |
+| `POST /sync` | Sincroniza um `item_id` (datas opcionais e inclusivas) |
+| `POST /sync/refresh` | Sincroniza de novo todos os Items conhecidos; a falha de um não interrompe os outros |
+| `GET /sync/runs` | Últimas 50 sincronizações, com filtros `status` e `item_id` |
+| `POST /copilot/ask` | Responde uma pergunta usando as ferramentas somente leitura |
+| `GET /copilot/status` | Provedor e modelo do Copilot e se os dados ficam no computador |
 
 ```http
 POST /copilot/ask
@@ -199,158 +249,87 @@ Content-Type: application/json
 
 `today` é a data local do usuário: o backend não decide o que é "hoje" nem "mês passado".
 
-## Copilot
+Status possíveis da resposta: `answered`, `ungrounded` (retida pelo guardrail), `refused` (o modelo se recusou) e `incomplete` (não chegou a uma resposta).
 
-### Modelo local com Ollama (padrão)
+</details>
 
-Por padrão o Copilot usa o [Ollama](https://ollama.com), que roda o modelo no próprio computador: não há chave, não há custo por pergunta e nem a pergunta nem os dados saem da máquina.
+## Open Finance
 
-1. Instale o Ollama e deixe-o aberto (ele escuta em `http://127.0.0.1:11434`).
-2. Baixe um modelo **com suporte a ferramentas (tools)**: `ollama pull llama3.1:8b`.
-3. Suba a API normalmente. Não é preciso configurar nada no `.env`.
+O app não tem acesso comercial ao Open Finance e não se conecta direto aos bancos. As instituições são conectadas pelo usuário no **MeuPluggy**, o agregador pessoal gratuito da Pluggy, e o app importa o que esse Item expõe.
 
-Para usar outro modelo, defina `COPILOT_MODEL` (por exemplo `qwen2.5:7b`) depois de baixá-lo com `ollama pull`. Se o Ollama estiver em outro computador, aponte `OLLAMA_BASE_URL` para ele; nesse caso os dados trafegam pela rede e a tela avisa.
+1. Na tela **Conexões**, o web pede um Connect Token ao backend (`POST /sync/connect-token`).
+2. O widget Pluggy Connect abre direto no MeuPluggy e o usuário faz login.
+3. Quando o widget confirma, o web chama `POST /sync` com o `item_id`.
+4. O backend busca as contas e as transações de cada conta, normaliza, deduplica e grava no PostgreSQL.
+5. **Sincronizar novamente** relê os Items já conhecidos e importa tudo de novo. Como tudo é upsert, uma importação incompleta é corrigida pela seguinte.
 
-O que esperar de um modelo local:
+Detalhes:
 
-- **É mais lento.** Uma resposta pode levar de alguns segundos a alguns minutos, conforme o hardware; o backend espera até 5 minutos por rodada.
-- **Segue instruções com menos precisão** que um modelo hospedado. Ele pode escolher a consulta errada, errar o período ou tentar fazer contas. Os guardrails abaixo valem igual: argumentos inválidos são recusados, e uma resposta com valor que nenhuma consulta devolveu é retida. Na prática, isso significa mais respostas retidas ou incompletas, não respostas com números errados.
-- As requisições usam temperatura 0 e contexto de 8192 tokens.
-
-Erros comuns: Ollama fechado → 502 ("Ollama is unreachable"); modelo não baixado ou sem suporte a ferramentas → 503, com o comando `ollama pull` na mensagem.
-
-### Modelo hospedado (opcional)
-
-Com `COPILOT_PROVIDER=anthropic` e `ANTHROPIC_API_KEY`, o Copilot usa a API da Anthropic (`claude-opus-5-5` por padrão). É mais rápido e mais preciso, mas cada pergunta tem custo e envia a pergunta e os resultados das consultas para fora do computador.
-
-### Como funciona
-
-O Copilot responde perguntas sobre as finanças do usuário **sem que o modelo calcule nada**. O modelo só escolhe quais consultas rodar e redige a resposta; os números vêm das mesmas queries determinísticas das telas.
-
-```text
-pergunta + data de hoje
-        ↓
-modelo escolhe ferramentas ──► get_spending_summary / get_spending_by_category /
-        ↑                      get_period_comparison / search_transactions / list_categories
-        └── resultados (JSON, dinheiro como string decimal)
-        ↓
-texto da resposta ──► checagem: todo valor em reais do texto existe em algum resultado?
-        ↓                       não → a resposta é retida (status "ungrounded")
-resposta + períodos consultados + evidências
-```
-
-- **Somente leitura:** só existem as cinco ferramentas acima, todas de consulta. Não há ferramenta que escreva, apague, categorize ou sincronize.
-- **Guardrail contra valores inventados:** além das instruções ao modelo, o backend extrai os valores em reais do texto da resposta e os compara, como decimais exatos, com os valores devolvidos pelas ferramentas na mesma pergunta. Um valor que nenhuma ferramenta devolveu (inventado, ou somado pelo próprio modelo) faz a resposta ser retida; as evidências continuam sendo devolvidas.
-- **Período:** as ferramentas aceitam os presets `current_month`, `previous_month` e `last_3_months`, resolvidos no backend a partir de `today`, ou datas explícitas. A resposta traz em `periods` os períodos realmente consultados.
-- **Evidências:** `evidence` lista as consultas que de fato rodaram. Cada uma traz um título, a **fonte do cálculo** em palavras, o período (e o período de comparação, quando há), os **fatos calculados** (`facts`, com valor e tipo), um link com os mesmos filtros para a tela de Transações e, nas buscas, as transações encontradas. Tudo isso é montado pelo backend a partir do resultado das consultas, nunca a partir do texto do modelo: uma fonte, um valor ou uma transação só aparecem se uma consulta determinística os produziu.
-- **Fato x interpretação:** `answer` é o texto escrito pelo modelo (redação e interpretação); os fatos ficam em `evidence`. Na tela, as duas coisas aparecem separadas e rotuladas.
-- **Ausência de dados:** cada evidência tem `has_data`, e a resposta tem `no_data` quando as consultas rodaram e nenhuma encontrou dados.
-- **O que vai para o modelo** (local ou hospedado)**:** a pergunta, a data e os resultados das ferramentas chamadas (totais, categorias e, em `search_transactions`, até 20 transações com data, descrição, estabelecimento, valor, tipo e categoria). Nunca vão: credenciais, tokens, ids da Pluggy, ids ou nomes de contas e instituições.
-- **Logs:** perguntas, respostas e resultados não são registrados; só o status e a quantidade de consultas.
-- **Limites:** uma pergunta por requisição, sem histórico de conversa; no máximo 6 rodadas do modelo por pergunta.
-- **Status da resposta:** `answered`, `ungrounded` (resposta retida pelo guardrail), `refused` (o modelo se recusou) e `incomplete` (não chegou a uma resposta). Falha do modelo vira 502; falta ou recusa da chave, 503.
-- **Recusas do modelo (só Anthropic):** as requisições usam `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`), que reexecuta no servidor, em outro modelo, uma requisição recusada pelos classificadores de segurança.
-
-## Fluxo Open Finance
-
-```text
-1. Web -> Conexões -> Conectar com MeuPluggy
-2. Web chama POST /sync/connect-token
-3. Backend gera Connect Token no Pluggy
-4. Widget Pluggy Connect abre direto no MeuPluggy (conector 200) e o usuário faz login nele
-5. onSuccess retorna o item
-6. Web chama POST /sync com o item_id
-7. backend busca contas
-8. backend busca transações por conta
-9. normalize -> deduplicate/upsert -> PostgreSQL
-10. Dashboard/Transações passam a ler os dados sincronizados normalmente
-```
-
-O Finance Copilot é de uso pessoal e não tem acesso comercial ao Open Finance: ele não se conecta diretamente aos bancos. As instituições são conectadas pelo usuário no **MeuPluggy**, o agregador pessoal gratuito da Pluggy, e o app importa o que esse único Item expõe. O widget só oferece o conector MeuPluggy; isso fica no cliente (`web/src/lib/pluggyConnect.ts`), e o backend continua falando apenas com a API da Pluggy por meio do `PluggyProvider`. Contas importadas aparecem com a instituição que a Pluggy informa para o Item (MeuPluggy).
-
-Um Item do MeuPluggy pode trazer várias contas, de instituições diferentes; todas as contas em BRL são importadas, cada uma identificada por `(provider, provider_account_id)`.
-
-**Sincronizar novamente** não abre o widget nem cria outro Item: o backend relê os `item_id` distintos já gravados em `sync_runs` (inclusive os de execuções que falharam) e importa de novo o que a Pluggy tem para cada um. Ele não pede à Pluggy que atualize o Item nos bancos; a atualização dos dados na origem fica por conta do MeuPluggy/Pluggy.
-
-O backend não espera nem faz polling do Item depois da conexão. Pela documentação do SDK instalado, o `onSuccess` do widget só dispara quando o Item foi criado ou atualizado com sucesso, e uma importação que pegue dados incompletos é corrigida pela seguinte, porque tudo é upsert.
-
-Falhas da Pluggy viram mensagens montadas pelo próprio adapter a partir do status HTTP, como `Pluggy rate limit exceeded (429).` ou `Pluggy resource not found (404, ITEM_NOT_FOUND).`. O corpo da resposta nunca é copiado para a resposta da API, para `sync_runs.error` ou para os logs; só entra o código de erro quando ele é uma constante simples.
-
-A sincronização aceita apenas contas/transações em BRL no MVP 0.2. Transações `PENDING` são ignoradas; apenas `POSTED` entram no banco. O valor é persistido como magnitude positiva, com `type = debit` ou `credit`, preservando a semântica utilizada pelos analytics existentes.
-
-## Cliente web
-
-Com o backend rodando (`scripts/dev.py api`, porta 8000), em outro terminal:
-
-```sh
-cd web
-npm install
-npm run dev
-```
-
-Abra `http://localhost:5173`. O Vite repassa `/api/*` para `http://127.0.0.1:8000`; para apontar para outro endereço, copie `web/.env.example` para `web/.env` e ajuste `API_PROXY_TARGET`.
-
-| Script | Função |
-| --- | --- |
-| `npm run dev` | Servidor de desenvolvimento com proxy para a API |
-| `npm run build` | Typecheck + build de produção em `web/dist` |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | TypeScript em modo strict |
-| `npm run test` | Vitest + Testing Library, com a API mockada (MSW) |
-
-Regras do cliente:
-
-- dinheiro chega como string decimal e é formatado em BRL sem virar `number`; a única conversão fica no componente do gráfico, só para a escala;
-- datas `YYYY-MM-DD` são tratadas como datas locais, nunca com `new Date("YYYY-MM-DD")`;
-- o período selecionado fica na URL (`?period=previous-month` ou `?start=…&end=…`);
-- o tema (claro ou escuro) segue o sistema até o usuário escolher pelo botão de sol/lua; a escolha fica em `localStorage`;
-- o dataset de demonstração, quando usado, cobre abril a setembro de 2026: escolha **Personalizado** nesse intervalo para vê-lo.
-
-Para testar em um iPhone na mesma LAN confiável, rode `npm run dev -- --host` e abra `http://<IP do computador>:5173`. O backend continua em `127.0.0.1`, porque só o Vite fala com ele. No Safari, **Compartilhar → Adicionar à Tela de Início** instala o app.
-
-## Código do app iOS
-
-O cliente SwiftUI foi removido da `main` quando o cliente web atingiu a paridade. O último estado dele está na tag [`ios-mvp-0.2`](https://github.com/mrquintao/finance-copilot/tree/ios-mvp-0.2):
-
-```sh
-git checkout ios-mvp-0.2
-```
-
-## Auditoria de qualidade dos dados
-
-```powershell
-.\.venv\Scripts\python.exe scripts/dev.py audit-data
-```
-
-Imprime um relatório **somente leitura** sobre o banco configurado. Ele nunca apaga nem corrige nada e só mostra contagens, datas e os ids internos das contas: nenhuma descrição, valor, estabelecimento ou identificador da Pluggy.
-
-| Verificação | O que sinaliza |
-| --- | --- |
-| `possible_duplicates` | Transações com mesma conta, data, valor, tipo e descrição. São candidatas a conferir, não erros: duas compras iguais no mesmo dia são legítimas |
-| `missing_external_ids` | Transações importadas sem o id externo usado na deduplicação |
-| `item_never_synchronized` | Item com execuções de sync e nenhuma bem-sucedida |
-| `stale_synchronization` | Item sem sync bem-sucedido há mais de 7 dias |
-| `historical_sync_gap` | Item que já ficou mais de 7 dias entre dois syncs bem-sucedidos (informativo) |
-| `account_without_transactions` | Conta importada sem transações, embora o Item já tenha sincronizado com sucesso |
-| `zero_amount`, `future_date`, `implausibly_old_date`, `blank_description` | Valores que o schema aceita, mas dificilmente estão certos (valor zero, data mais de um dia no futuro, data anterior a 2000, descrição em branco) |
+- Contas são identificadas por `(provider, provider_account_id)` e transações por `(account_id, external_id)`.
+- Só entram contas e transações em BRL, e só transações `POSTED`.
+- Erros transitórios, 429 e 5xx são repetidos. A API key é renovada após um 401.
+- Falhas da Pluggy viram mensagens montadas a partir do status HTTP. O corpo da resposta nunca vai para a API, para `sync_runs` ou para os logs.
 
 ## Regras financeiras
 
-- `amount` é não negativo.
-- `debit` = despesa.
-- `credit` = receita.
-- `transfer` = movimentação interna e não entra em gastos/receitas.
-- Dinheiro usa `Decimal`, `NUMERIC(18,2)` e strings JSON com duas casas.
-- Não há conversão cambial no MVP 0.2; somente BRL é persistido.
-- Categorias do provider passam por uma normalização determinística simples antes de serem persistidas.
-- O LLM não faz cálculos: no Copilot ele só escolhe consultas e redige; todo valor exibido é conferido contra o resultado das ferramentas.
-- A projeção de fechamento do mês (`GET /analytics/month-projection?as_of=AAAA-MM-DD`) é uma **estimativa**, calculada assim: o gasto variável (débitos não marcados como recorrentes) até `as_of` é multiplicado por dias do mês ÷ dias decorridos, com um único arredondamento ao centavo; os recorrentes não entram na média: soma-se o que já foi gasto com eles e o que o mês anterior teve de recorrente e este ainda não mostrou. Sem transações marcadas como recorrentes, é a média diária simples. No começo do mês a média se apoia em poucos dias; a resposta informa `days_elapsed`.
-- Insights (`GET /analytics/insights`) são regras fixas sobre a comparação com o período anterior: uma variação é relevante quando tem pelo menos R$ 50,00 e, havendo valor anterior, pelo menos 20%. Os tipos são variação relevante de gasto por categoria (alta ou queda), a categoria que mais variou, variação relevante do total de gastos e de receitas, e crescimento relevante dos gastos marcados como recorrentes. Cada insight traz os valores comparados, e a resposta traz os dois períodos e os limiares.
+- Dinheiro é `Decimal` no Python, `NUMERIC(18,2)` no banco e string com duas casas no JSON. Nunca `float`.
+- `amount` é sempre não negativo. `debit` é despesa, `credit` é receita e `transfer` é movimentação interna, que não entra em gastos nem em receitas.
+- O cliente web formata dinheiro em BRL sem converter para `number`. A única conversão fica no gráfico, só para a escala.
+- A projeção do mês é uma estimativa. O gasto variável até a data é extrapolado pela média diária, e os gastos recorrentes entram pelo valor real. A resposta traz as premissas e os dias decorridos.
+- Um insight só é gerado para variações de pelo menos R$ 50,00 e, quando há valor anterior, de pelo menos 20%.
+
+<details>
+<summary><b>Auditoria de qualidade dos dados</b></summary>
+
+`python scripts/dev.py audit-data` imprime um relatório **somente leitura**. Ele nunca apaga nem corrige nada e mostra só contagens, datas e ids internos: nenhuma descrição, valor ou identificador da Pluggy.
+
+| Verificação | O que sinaliza |
+| --- | --- |
+| `possible_duplicates` | Mesma conta, data, valor, tipo e descrição. São candidatas a conferir, não erros |
+| `missing_external_ids` | Transações importadas sem o id usado na deduplicação |
+| `item_never_synchronized` | Item sem nenhuma sincronização bem-sucedida |
+| `stale_synchronization` | Item sem sincronização bem-sucedida há mais de 7 dias |
+| `historical_sync_gap` | Item que já ficou mais de 7 dias entre duas sincronizações |
+| `account_without_transactions` | Conta importada sem transações |
+| `zero_amount`, `future_date`, `implausibly_old_date`, `blank_description` | Valores aceitos pelo schema que dificilmente estão certos |
+
+</details>
+
+## Qualidade e testes
+
+- **Backend:** pytest contra um PostgreSQL real, num schema temporário criado e apagado a cada execução. Ruff para lint e formatação.
+- **Web:** Vitest e Testing Library, com a API mockada por MSW. ESLint e TypeScript strict.
+- **CI:** dois workflows no GitHub Actions. O do backend aplica as migrations num PostgreSQL 18 e roda lint e testes. O do web roda lint, typecheck, testes e build.
+
+## Status e roadmap
+
+| Versão | Entregas |
+| --- | --- |
+| MVP 0.1 | Core financeiro: contas, categorias, transações, analytics e dataset de demonstração |
+| MVP 0.2 | Open Finance via Pluggy: importação, deduplicação e histórico de sincronizações |
+| MVP 0.3 (atual) | Cliente web e PWA, filtros, contas consolidadas, comparação de períodos, insights, projeção do mês, auditoria de dados e o Copilot |
+
+Próximos passos, acompanhados nas [issues](https://github.com/mrquintao/finance-copilot/issues):
+
+- autenticação e deploy com HTTPS ([#19](https://github.com/mrquintao/finance-copilot/issues/19));
+- categorias editáveis e regras por estabelecimento ([#6](https://github.com/mrquintao/finance-copilot/issues/6));
+- transações recorrentes e orçamento por categoria ([#7](https://github.com/mrquintao/finance-copilot/issues/7), [#8](https://github.com/mrquintao/finance-copilot/issues/8));
+- webhooks da Pluggy e sincronização automática ([#10](https://github.com/mrquintao/finance-copilot/issues/10)).
+
+A visão completa do produto está em [docs/vision.md](docs/vision.md).
+
+O app começou com um cliente iOS em SwiftUI, substituído pelo web quando este chegou à paridade. O último estado dele está na tag [`ios-mvp-0.2`](https://github.com/mrquintao/finance-copilot/tree/ios-mvp-0.2).
 
 ## Segurança e limites
 
-O Finance Copilot continua sendo um projeto **single-person e sem autenticação própria da API**. Com dados reais, não exponha o backend nem o servidor do Vite à internet até existir autenticação/autorização adequada. Para testar em um iPhone, use apenas LAN confiável; o deploy do MVP 0.3 usará HTTPS, com web e API no mesmo domínio, e autenticação por cookie `httpOnly`.
+> [!WARNING]
+> A API ainda **não tem autenticação**. Com dados reais, não exponha o backend nem o servidor do Vite à internet. Para testar no celular, use só uma rede local confiável (`npm run dev -- --host`).
 
-Segredos ficam no `.env`/secret manager e nunca no cliente web, que não guarda tokens nem dados financeiros em `localStorage`/`sessionStorage` (só a preferência de tema). O adapter não registra bodies da Pluggy nem credenciais. Erros persistidos em `sync_runs` são sanitizados. Respostas continuam com `Cache-Control: no-store`.
+- Segredos ficam no `.env`, que não é versionado, e nunca chegam ao cliente web.
+- O cliente não guarda tokens nem dados financeiros no navegador. Só a preferência de tema fica em `localStorage`.
+- O adapter da Pluggy não registra corpos de resposta nem credenciais, e os erros gravados em `sync_runs` são sanitizados.
+- As respostas da API usam `Cache-Control: no-store`.
 
-Ainda não implementado: autenticação, deploy e webhooks de atualização automática (os três fazem parte do MVP 0.3), além de multiusuário, pagamentos, LLM/chat, analytics avançados, recorrência avançada e insights proativos.
+## Licença
+
+[MIT](LICENSE) © 2026 Mateus Ribeiro Quintão
