@@ -14,6 +14,7 @@ from starlette.middleware.base import RequestResponseEndpoint
 from app.accounts.router import router as accounts_router
 from app.analytics.router import router as analytics_router
 from app.categories.router import router as categories_router
+from app.copilot.router import router as copilot_router
 from app.core.config import database_url
 from app.db.session import SessionDep, make_engine
 from app.sync.router import router as sync_router
@@ -90,6 +91,7 @@ def create_app() -> FastAPI:
     app.include_router(categories_router)
     app.include_router(accounts_router)
     app.include_router(sync_router)
+    app.include_router(copilot_router)
     return app
 
 

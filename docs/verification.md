@@ -24,6 +24,7 @@ Os testes do backend rodam contra PostgreSQL real, sem SQLite. Cada execução c
 - isolamento do dataset de demonstração: o `clean-demo` remove só a conta e as transações fictícias e preserva contas e transações de provedor, `sync_runs` e categorias; o seed recusa rodar ao lado de contas de provedor;
 - contrato OpenAPI;
 - auditoria de qualidade dos dados (`audit-data`): cada verificação, os limites exatos, relatório sem conteúdo de transações e a garantia de que nada é modificado;
+- Copilot, sem rede e sem modelo real: cada ferramenta isolada, o laço de tool use com um modelo roteirizado, a retenção de respostas com valores não calculados, o limite de rodadas, o que é enviado ao modelo (nenhum segredo ou id de provedor), ausência de perguntas e respostas nos logs e o mapeamento de erros do adapter;
 - visão de contas: agrupamento por instituição, estado derivado da última sincronização do Item e nenhum identificador do provedor na resposta;
 - histórico de sincronização: filtros por status e Item, nomes das contas do Item e classificação da falha (provedor, rede, banco, validação) a partir da mensagem sanitizada;
 - erros e logs sem vazamento de dados financeiros;

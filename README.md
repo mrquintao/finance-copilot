@@ -93,6 +93,8 @@ Variáveis principais:
 | `PLUGGY_CLIENT_ID` | Identificador da aplicação Pluggy, backend only |
 | `PLUGGY_CLIENT_SECRET` | Secret da aplicação Pluggy, backend only |
 | `PLUGGY_BASE_URL` | API Pluggy; padrão `https://api.pluggy.ai` |
+| `ANTHROPIC_API_KEY` | Chave da API do modelo usado pelo Copilot, backend only. Sem ela, só o Copilot fica indisponível |
+| `COPILOT_MODEL` | Modelo do Copilot; padrão `claude-opus-5-5` |
 
 ## Banco e migrations
 
@@ -177,6 +179,47 @@ Content-Type: application/json
 ```
 
 As datas são opcionais e inclusivas. Intervalo invertido retorna 422.
+
+Copilot:
+
+| Método/rota | Função |
+| --- | --- |
+| `POST /copilot/ask` | Responde a uma pergunta em linguagem natural usando ferramentas determinísticas, somente leitura |
+
+```http
+POST /copilot/ask
+Content-Type: application/json
+
+{ "question": "Quanto gastei com alimentação no mês passado?", "today": "2026-10-07" }
+```
+
+`today` é a data local do usuário: o backend não decide o que é "hoje" nem "mês passado".
+
+## Copilot
+
+O Copilot responde perguntas sobre as finanças do usuário **sem que o modelo calcule nada**. O modelo só escolhe quais consultas rodar e redige a resposta; os números vêm das mesmas queries determinísticas das telas.
+
+```text
+pergunta + data de hoje
+        ↓
+modelo escolhe ferramentas ──► get_spending_summary / get_spending_by_category /
+        ↑                      get_period_comparison / search_transactions / list_categories
+        └── resultados (JSON, dinheiro como string decimal)
+        ↓
+texto da resposta ──► checagem: todo valor em reais do texto existe em algum resultado?
+        ↓                       não → a resposta é retida (status "ungrounded")
+resposta + períodos consultados + evidências
+```
+
+- **Somente leitura:** só existem as cinco ferramentas acima, todas de consulta. Não há ferramenta que escreva, apague, categorize ou sincronize.
+- **Guardrail contra valores inventados:** além das instruções ao modelo, o backend extrai os valores em reais do texto da resposta e os compara, como decimais exatos, com os valores devolvidos pelas ferramentas na mesma pergunta. Um valor que nenhuma ferramenta devolveu (inventado, ou somado pelo próprio modelo) faz a resposta ser retida; as evidências continuam sendo devolvidas.
+- **Período:** as ferramentas aceitam os presets `current_month`, `previous_month` e `last_3_months`, resolvidos no backend a partir de `today`, ou datas explícitas. A resposta traz em `periods` os períodos realmente consultados.
+- **Evidências:** `evidence` lista as consultas que de fato rodaram, com argumentos e resultado. Ela é montada pelo backend, nunca a partir do texto do modelo.
+- **O que vai para o modelo:** a pergunta, a data e os resultados das ferramentas chamadas (totais, categorias e, em `search_transactions`, até 20 transações com data, descrição, estabelecimento, valor, tipo e categoria). Nunca vão: credenciais, tokens, ids da Pluggy, ids ou nomes de contas e instituições.
+- **Logs:** perguntas, respostas e resultados não são registrados; só o status e a quantidade de consultas.
+- **Limites:** uma pergunta por requisição, sem histórico de conversa; no máximo 6 rodadas do modelo por pergunta.
+- **Status da resposta:** `answered`, `ungrounded` (resposta retida pelo guardrail), `refused` (o modelo se recusou) e `incomplete` (não chegou a uma resposta). Falha do modelo vira 502; falta ou recusa da chave, 503.
+- **Recusas do modelo:** as requisições usam `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`), que reexecuta no servidor, em outro modelo, uma requisição recusada pelos classificadores de segurança.
 
 ## Fluxo Open Finance
 
@@ -270,7 +313,7 @@ Imprime um relatório **somente leitura** sobre o banco configurado. Ele nunca a
 - Dinheiro usa `Decimal`, `NUMERIC(18,2)` e strings JSON com duas casas.
 - Não há conversão cambial no MVP 0.2; somente BRL é persistido.
 - Categorias do provider passam por uma normalização determinística simples antes de serem persistidas.
-- O LLM continua fora do fluxo financeiro e não faz cálculos.
+- O LLM não faz cálculos: no Copilot ele só escolhe consultas e redige; todo valor exibido é conferido contra o resultado das ferramentas.
 - A projeção de fechamento do mês (`GET /analytics/month-projection?as_of=AAAA-MM-DD`) é uma **estimativa**, calculada assim: o gasto variável (débitos não marcados como recorrentes) até `as_of` é multiplicado por dias do mês ÷ dias decorridos, com um único arredondamento ao centavo; os recorrentes não entram na média: soma-se o que já foi gasto com eles e o que o mês anterior teve de recorrente e este ainda não mostrou. Sem transações marcadas como recorrentes, é a média diária simples. No começo do mês a média se apoia em poucos dias; a resposta informa `days_elapsed`.
 - Insights (`GET /analytics/insights`) são regras fixas sobre a comparação com o período anterior: uma variação é relevante quando tem pelo menos R$ 50,00 e, havendo valor anterior, pelo menos 20%. Os tipos são variação relevante de gasto por categoria (alta ou queda), a categoria que mais variou, variação relevante do total de gastos e de receitas, e crescimento relevante dos gastos marcados como recorrentes. Cada insight traz os valores comparados, e a resposta traz os dois períodos e os limiares.
 

@@ -154,10 +154,10 @@ Objetivo:
 
 ### Entregas
 
-- [ ] Endpoint de chat.
-- [ ] Integração com LLM via API.
-- [ ] Tool calling.
-- [ ] Ferramentas de analytics para o LLM.
+- [x] Endpoint de chat (`POST /copilot/ask`, uma pergunta por requisição).
+- [x] Integração com LLM via API (atrás de `LLMProvider`).
+- [x] Tool calling.
+- [x] Ferramentas de analytics para o LLM (somente leitura).
 - [ ] Histórico de conversa.
 - [ ] Controles de privacidade.
 - [ ] Respostas explicáveis e baseadas em dados retornados pelas tools.
