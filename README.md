@@ -61,6 +61,7 @@ O cliente web chama a API sempre em `/api`, na própria origem. Em desenvolvimen
 - Transações paginadas e detalhe em rota própria (link compartilhável).
 - Conexões com a conta MeuPluggy pelo widget Pluggy Connect, "Sincronizar novamente" e histórico de sincronizações.
 - Manifest de PWA e ícones para "Adicionar à tela de início" (sem service worker por enquanto).
+- Tela **Copilot**: pergunta em linguagem natural, texto do modelo separado dos dados calculados, período e fonte de cada cálculo e links para as transações que sustentam a resposta.
 - Ainda **sem autenticação**: ela é a próxima entrega deste marco.
 
 ## Requisitos
@@ -214,7 +215,9 @@ resposta + períodos consultados + evidências
 - **Somente leitura:** só existem as cinco ferramentas acima, todas de consulta. Não há ferramenta que escreva, apague, categorize ou sincronize.
 - **Guardrail contra valores inventados:** além das instruções ao modelo, o backend extrai os valores em reais do texto da resposta e os compara, como decimais exatos, com os valores devolvidos pelas ferramentas na mesma pergunta. Um valor que nenhuma ferramenta devolveu (inventado, ou somado pelo próprio modelo) faz a resposta ser retida; as evidências continuam sendo devolvidas.
 - **Período:** as ferramentas aceitam os presets `current_month`, `previous_month` e `last_3_months`, resolvidos no backend a partir de `today`, ou datas explícitas. A resposta traz em `periods` os períodos realmente consultados.
-- **Evidências:** `evidence` lista as consultas que de fato rodaram, com argumentos e resultado. Ela é montada pelo backend, nunca a partir do texto do modelo.
+- **Evidências:** `evidence` lista as consultas que de fato rodaram. Cada uma traz um título, a **fonte do cálculo** em palavras, o período (e o período de comparação, quando há), os **fatos calculados** (`facts`, com valor e tipo), um link com os mesmos filtros para a tela de Transações e, nas buscas, as transações encontradas. Tudo isso é montado pelo backend a partir do resultado das consultas, nunca a partir do texto do modelo: uma fonte, um valor ou uma transação só aparecem se uma consulta determinística os produziu.
+- **Fato x interpretação:** `answer` é o texto escrito pelo modelo (redação e interpretação); os fatos ficam em `evidence`. Na tela, as duas coisas aparecem separadas e rotuladas.
+- **Ausência de dados:** cada evidência tem `has_data`, e a resposta tem `no_data` quando as consultas rodaram e nenhuma encontrou dados.
 - **O que vai para o modelo:** a pergunta, a data e os resultados das ferramentas chamadas (totais, categorias e, em `search_transactions`, até 20 transações com data, descrição, estabelecimento, valor, tipo e categoria). Nunca vão: credenciais, tokens, ids da Pluggy, ids ou nomes de contas e instituições.
 - **Logs:** perguntas, respostas e resultados não são registrados; só o status e a quantidade de consultas.
 - **Limites:** uma pergunta por requisição, sem histórico de conversa; no máximo 6 rodadas do modelo por pergunta.

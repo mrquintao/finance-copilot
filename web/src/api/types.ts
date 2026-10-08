@@ -162,6 +162,47 @@ export interface PeriodComparison {
   categories: CategoryChange[]
 }
 
+export type CopilotStatus = 'answered' | 'ungrounded' | 'refused' | 'incomplete'
+
+/** Filters for the Transactions screen that reproduce the query behind a fact. */
+export interface TransactionsLink {
+  start_date: LocalDate
+  end_date: LocalDate
+  q: string | null
+  category_id: UUID | null
+  type: TransactionType | null
+}
+
+/** A value calculated by the backend. `value` is a decimal string or an integer. */
+export interface CopilotFact {
+  label: string
+  value: string
+  kind: 'money' | 'signed_money' | 'count' | 'signed_count' | 'percent'
+  detail: string | null
+  link: TransactionsLink | null
+}
+
+export interface CopilotEvidence {
+  tool: string
+  title: string
+  source: string
+  period: DateRange | null
+  comparison_period: DateRange | null
+  has_data: boolean
+  facts: CopilotFact[]
+  transactions_link: TransactionsLink | null
+  transactions: { id: UUID; date: LocalDate; title: string; amount: Money; type: TransactionType }[]
+}
+
+export interface CopilotAnswer {
+  status: CopilotStatus
+  /** Text written by the model. Calculated facts are in `evidence`. */
+  answer: string
+  periods: DateRange[]
+  no_data: boolean
+  evidence: CopilotEvidence[]
+}
+
 export interface ConnectTokenResponse {
   connect_token: string
 }

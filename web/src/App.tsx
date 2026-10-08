@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router'
 import { AppShell } from './components/AppShell'
 import { AccountsPage } from './pages/AccountsPage'
 import { ConnectionsPage } from './pages/ConnectionsPage'
+import { CopilotPage } from './pages/CopilotPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { TransactionDetailPage } from './pages/TransactionDetailPage'
@@ -16,6 +17,7 @@ export function App() {
         <Route path="transactions/:id" element={<TransactionDetailPage />} />
         <Route path="accounts" element={<AccountsPage />} />
         <Route path="connections" element={<ConnectionsPage />} />
+        <Route path="copilot" element={<CopilotPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

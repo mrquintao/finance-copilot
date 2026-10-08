@@ -115,20 +115,17 @@ def test_question_is_answered_from_structured_analytics(client, monkeypatch, led
     assert body["answer"] == "Você gastou R$ 62,75 com alimentação entre 01/09/2026 e 30/09/2026."
     # The period comes from the query that ran, not from the model's wording.
     assert body["periods"] == [{"start_date": "2026-09-01", "end_date": "2026-09-30"}]
-    assert body["evidence"] == [
-        {
-            "tool": "get_spending_by_category",
-            "arguments": SEPTEMBER,
-            "period": {"start_date": "2026-09-01", "end_date": "2026-09-30"},
-            "result": {
-                "period": {"start_date": "2026-09-01", "end_date": "2026-09-30"},
-                "categories": [
-                    {"category": "Alimentação", "amount": "62.75", "transaction_count": 2},
-                    {"category": "Sem categoria", "amount": "59.00", "transaction_count": 1},
-                ],
-            },
-        }
-    ]
+    (evidence,) = body["evidence"]
+    assert evidence["tool"] == "get_spending_by_category"
+    assert evidence["arguments"] == SEPTEMBER
+    assert evidence["period"] == {"start_date": "2026-09-01", "end_date": "2026-09-30"}
+    assert evidence["result"] == {
+        "period": {"start_date": "2026-09-01", "end_date": "2026-09-30"},
+        "categories": [
+            {"category": "Alimentação", "amount": "62.75", "transaction_count": 2},
+            {"category": "Sem categoria", "amount": "59.00", "transaction_count": 1},
+        ],
+    }
 
 
 def test_the_model_receives_the_date_the_question_and_the_tool_result(client, monkeypatch, ledger):
@@ -260,6 +257,7 @@ def test_refusal_is_explicit(client, monkeypatch, ledger):
         "status": "refused",
         "answer": "O modelo não respondeu a esta pergunta.",
         "periods": [],
+        "no_data": False,
         "evidence": [],
     }
 

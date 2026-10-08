@@ -53,6 +53,15 @@ const TABS: { to: string; label: string; end?: boolean; icon: ReactNode }[] = [
       </svg>
     ),
   },
+  {
+    to: '/copilot',
+    label: 'Copilot',
+    icon: (
+      <svg {...icon}>
+        <path d="M4 5h16v11H9l-5 4z" />
+      </svg>
+    ),
+  },
 ]
 
 const tab =
