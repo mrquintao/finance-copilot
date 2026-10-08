@@ -17,3 +17,7 @@ node_modules/
 AGENTS.md
 CLAUDE.md
 .claude/
+
+# Arquivos locais de execução
+AUTONOMOUS_RUN_REPORT.md
+/package-lock.json
