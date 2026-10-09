@@ -65,9 +65,9 @@ function Detail({ transaction }: { transaction: Transaction }) {
   return (
     <article>
       <header className="border-b border-ink pb-5">
-        <p className="label-caps">{TYPE_LABELS[transaction.type]}</p>
+        <p className="section-label">{TYPE_LABELS[transaction.type]}</p>
         <h1 className="mt-2 text-lg font-semibold break-words">{transactionTitle(transaction)}</h1>
-        <p className="mt-1 text-[clamp(1.75rem,8vw,2.25rem)] leading-tight font-semibold tracking-tight break-words tabular-nums">
+        <p className="mt-1 text-3xl leading-tight font-semibold tracking-tight break-words tabular-nums">
           {formatBRL(transaction.amount)}
         </p>
         {transaction.type === 'transfer' && (

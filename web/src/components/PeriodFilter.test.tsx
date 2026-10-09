@@ -18,8 +18,7 @@ function renderFilter(route = '/') {
   return userEvent.setup()
 }
 
-const pressed = (name: string) =>
-  screen.getByRole('button', { name }).getAttribute('aria-pressed') === 'true'
+const button = (name: string) => screen.getByRole('button', { name })
 
 describe('PeriodFilter', () => {
   beforeEach(() => {
@@ -29,22 +28,51 @@ describe('PeriodFilter', () => {
   })
   afterEach(() => vi.useRealTimers())
 
-  it('starts on the current month', () => {
+  it('starts on the current month, which has no next month to go to', () => {
     renderFilter()
-    expect(pressed('Mês atual')).toBe(true)
-    expect(screen.getByText('01/10/2026 – 31/10/2026')).toBeInTheDocument()
+    expect(screen.getByText('Outubro de 2026')).toBeInTheDocument()
+    expect(button('Próximo mês')).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Mês atual' })).not.toBeInTheDocument()
   })
 
-  it('switches presets and writes them to the URL', async () => {
+  it('steps month by month and writes the period to the URL', async () => {
     const user = renderFilter()
 
-    await user.click(screen.getByRole('button', { name: 'Mês anterior' }))
-    expect(pressed('Mês anterior')).toBe(true)
-    expect(pressed('Mês atual')).toBe(false)
-    expect(screen.getByText('01/09/2026 – 30/09/2026')).toBeInTheDocument()
+    await user.click(button('Mês anterior'))
+    expect(screen.getByText('Setembro de 2026')).toBeInTheDocument()
     expect(screen.getByTestId('search')).toHaveTextContent('?period=previous-month')
 
-    await user.click(screen.getByRole('button', { name: 'Últimos 3 meses' }))
+    await user.click(button('Mês anterior'))
+    expect(screen.getByText('Agosto de 2026')).toBeInTheDocument()
+    expect(screen.getByTestId('search')).toHaveTextContent('?start=2026-08-01&end=2026-08-31')
+
+    await user.click(button('Próximo mês'))
+    expect(screen.getByText('Setembro de 2026')).toBeInTheDocument()
+    expect(screen.getByTestId('search')).toHaveTextContent('?period=previous-month')
+  })
+
+  it('crosses the year when stepping back from January', async () => {
+    const user = renderFilter('/?start=2026-01-01&end=2026-01-31')
+
+    expect(screen.getByText('Janeiro de 2026')).toBeInTheDocument()
+    await user.click(button('Mês anterior'))
+    expect(screen.getByText('Dezembro de 2025')).toBeInTheDocument()
+    expect(screen.getByTestId('search')).toHaveTextContent('?start=2025-12-01&end=2025-12-31')
+  })
+
+  it('returns to the current month in one click', async () => {
+    const user = renderFilter('/?start=2026-04-01&end=2026-04-30')
+
+    await user.click(button('Mês atual'))
+    expect(screen.getByText('Outubro de 2026')).toBeInTheDocument()
+    expect(screen.getByTestId('search')).toHaveTextContent('?period=current-month')
+  })
+
+  it('offers the last three months under other periods', async () => {
+    const user = renderFilter()
+
+    await user.click(button('Outro período'))
+    await user.click(button('Últimos 3 meses'))
     expect(screen.getByText('01/08/2026 – 31/10/2026')).toBeInTheDocument()
     expect(screen.getByTestId('search')).toHaveTextContent('?period=last-3-months')
   })
@@ -52,12 +80,11 @@ describe('PeriodFilter', () => {
   it('applies a custom range', async () => {
     const user = renderFilter()
 
-    await user.click(screen.getByRole('button', { name: 'Personalizado' }))
+    await user.click(button('Outro período'))
     fireEvent.change(screen.getByLabelText('De'), { target: { value: '2026-04-01' } })
     fireEvent.change(screen.getByLabelText('Até'), { target: { value: '2026-09-30' } })
-    await user.click(screen.getByRole('button', { name: 'Aplicar' }))
+    await user.click(button('Aplicar'))
 
-    expect(pressed('Personalizado')).toBe(true)
     expect(screen.getByText('01/04/2026 – 30/09/2026')).toBeInTheDocument()
     expect(screen.getByTestId('search')).toHaveTextContent('?start=2026-04-01&end=2026-09-30')
   })
@@ -65,23 +92,35 @@ describe('PeriodFilter', () => {
   it('blocks an inverted custom range', async () => {
     const user = renderFilter()
 
-    await user.click(screen.getByRole('button', { name: 'Personalizado' }))
+    await user.click(button('Outro período'))
     fireEvent.change(screen.getByLabelText('De'), { target: { value: '2026-09-30' } })
     fireEvent.change(screen.getByLabelText('Até'), { target: { value: '2026-09-01' } })
 
     expect(screen.getByRole('alert')).toHaveTextContent(
       'A data inicial deve ser anterior ou igual à data final.',
     )
-    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeDisabled()
+    expect(button('Aplicar')).toBeDisabled()
     // Nothing was applied: the period on screen is still the current month.
-    expect(screen.getByText('01/10/2026 – 31/10/2026')).toBeInTheDocument()
+    expect(screen.getByText('Outubro de 2026')).toBeInTheDocument()
     expect(screen.getByTestId('search')).toBeEmptyDOMElement()
   })
 
-  it('restores a custom range from the URL', () => {
-    renderFilter('/?start=2026-04-01&end=2026-09-30')
-    expect(pressed('Personalizado')).toBe(true)
+  it('restores a custom range from the URL', async () => {
+    const user = renderFilter('/?start=2026-04-01&end=2026-09-30')
+
+    expect(screen.getByText('01/04/2026 – 30/09/2026')).toBeInTheDocument()
+    await user.click(button('Outro período'))
     expect(screen.getByLabelText('De')).toHaveValue('2026-04-01')
     expect(screen.getByLabelText('Até')).toHaveValue('2026-09-30')
+  })
+
+  it('steps to the month after a range, and never past the current month', async () => {
+    const user = renderFilter('/?start=2026-04-01&end=2026-08-31')
+
+    await user.click(button('Próximo mês'))
+    expect(screen.getByText('Setembro de 2026')).toBeInTheDocument()
+    await user.click(button('Próximo mês'))
+    expect(screen.getByText('Outubro de 2026')).toBeInTheDocument()
+    expect(button('Próximo mês')).toBeDisabled()
   })
 })

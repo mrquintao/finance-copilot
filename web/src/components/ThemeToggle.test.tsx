@@ -79,7 +79,7 @@ describe('ThemeToggle', () => {
     render(<ThemeToggle />)
 
     await user.click(screen.getByRole('button', toDark))
-    expect(meta.content).toBe('#1a1917')
+    expect(meta.content).toBe('#0c1a1d')
     meta.remove()
   })
 })

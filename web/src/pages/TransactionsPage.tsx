@@ -43,8 +43,9 @@ export function TransactionsPage() {
 
   return (
     <div className="max-w-3xl">
-      <PageHeader title="Transações" />
-      <PeriodFilter />
+      <PageHeader title="Transações">
+        <PeriodFilter />
+      </PageHeader>
       <TransactionFilters />
       {!pages && query.isError ? (
         <ErrorState message={errorMessage(query.error)} onRetry={() => void query.refetch()} />
@@ -76,7 +77,7 @@ export function TransactionsPage() {
           )}
           {query.hasNextPage && (
             <div className="mt-4 flex items-center justify-between gap-4">
-              <p className="text-[0.8125rem] text-ink-soft tabular-nums">
+              <p className="text-sm text-ink-soft tabular-nums">
                 {transactions.length} de {total}
               </p>
               <Button

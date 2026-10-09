@@ -162,6 +162,29 @@ export interface PeriodComparison {
   categories: CategoryChange[]
 }
 
+export type InsightKind =
+  | 'category_increase'
+  | 'category_decrease'
+  | 'largest_category_change'
+  | 'spending_change'
+  | 'income_change'
+  | 'recurring_growth'
+
+/** One fixed rule that fired, with the compared values. No model is involved. */
+export interface Insight extends MoneyChange {
+  kind: InsightKind
+  category_id: UUID | null
+  category: string | null
+}
+
+export interface InsightList {
+  currency: 'BRL'
+  period: DateRange
+  previous_period: DateRange
+  thresholds: { min_change: Money; min_percent: string }
+  items: Insight[]
+}
+
 export type CopilotStatus = 'answered' | 'ungrounded' | 'refused' | 'incomplete'
 
 /** Which model serves the Copilot. `local` means data does not leave this machine. */

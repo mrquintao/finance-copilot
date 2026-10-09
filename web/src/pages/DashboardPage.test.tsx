@@ -2,7 +2,14 @@ import { screen, within } from '@testing-library/react'
 import { delay, http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MonthProjection } from '../api/types'
-import { emptySummary, makeByCategory, makeComparison, makeSummary } from '../test/fixtures'
+import {
+  emptySummary,
+  makeByCategory,
+  makeComparison,
+  makePage,
+  makeSummary,
+  makeTransaction,
+} from '../test/fixtures'
 import { renderApp, SEPTEMBER } from '../test/render'
 import { server } from '../test/server'
 
@@ -10,11 +17,27 @@ const SUMMARY = '/api/analytics/spending-summary'
 const BY_CATEGORY = '/api/analytics/spending-by-category'
 
 const COMPARISON = '/api/analytics/period-comparison'
+const INSIGHTS = '/api/analytics/insights'
+const TRANSACTIONS = '/api/transactions'
+
+const noInsights = {
+  currency: 'BRL',
+  period: { start_date: '2026-09-01', end_date: '2026-09-30' },
+  previous_period: { start_date: '2026-08-01', end_date: '2026-08-31' },
+  thresholds: { min_change: '50.00', min_percent: '20.0' },
+  items: [],
+}
 
 describe('DashboardPage', () => {
-  // Every loaded dashboard also asks for the comparison; tests that care override this.
+  // Every loaded dashboard also asks for the comparison, the insights and the latest
+  // transactions; tests that care override these.
   beforeEach(() => {
-    server.use(http.get(COMPARISON, () => HttpResponse.json(makeComparison())))
+    server.use(
+      http.get(COMPARISON, () => HttpResponse.json(makeComparison())),
+      http.get(INSIGHTS, () => HttpResponse.json(noInsights)),
+      http.get(TRANSACTIONS, () => HttpResponse.json(makePage([]))),
+      http.get('/api/categories', () => HttpResponse.json([])),
+    )
   })
 
   it('shows a loading state while the summary is pending', async () => {
@@ -122,6 +145,7 @@ describe('DashboardPage', () => {
     const { user } = renderApp(`/${SEPTEMBER}`)
     await screen.findByRole('status')
 
+    await user.click(screen.getByRole('button', { name: 'Outro período' }))
     await user.click(screen.getByRole('button', { name: 'Últimos 3 meses' }))
 
     expect(await screen.findByText('R$ 222,22')).toBeInTheDocument()
@@ -191,7 +215,8 @@ describe('DashboardPage', () => {
       renderApp(`/${SEPTEMBER}`)
 
       const totals = await screen.findByRole('list', { name: 'Totais comparados' })
-      expect(screen.getByText('01/08/2026 – 31/08/2026')).toBeInTheDocument()
+      // The previous period is named, not left implicit.
+      expect(within(totals).getByText(/^Gastos sobre agosto/)).toBeInTheDocument()
       const [spending, income, count] = within(totals).getAllByRole('listitem')
       expect(spending).toHaveTextContent('Gastos')
       expect(spending).toHaveTextContent('Antes: R$ 3.400,00')
@@ -261,9 +286,14 @@ describe('DashboardPage', () => {
       expect(within(totals).getAllByRole('listitem')[0]).toHaveTextContent('Sem variação')
     })
 
-    it('lists the categories that moved the most, skipping unchanged ones', async () => {
+    it('shows each category with its change, including one with no spending now', async () => {
+      const ids: Record<string, string> = {
+        Viagens: '33333333-3333-4333-8333-333333333331',
+        Restaurantes: '33333333-3333-4333-8333-333333333332',
+        Farmácia: '33333333-3333-4333-8333-333333333333',
+      }
       const category = (name: string, change: string, direction: 'up' | 'down' | 'equal') => ({
-        category_id: null,
+        category_id: ids[name]!,
         category: name,
         current: '100.00',
         previous: '40.00',
@@ -287,13 +317,20 @@ describe('DashboardPage', () => {
       )
       renderApp(`/${SEPTEMBER}`)
 
-      const list = await screen.findByRole('list', { name: 'Categorias que mais variaram' })
+      await screen.findByRole('list', { name: 'Totais comparados' })
+      const list = screen.getByRole('list', { name: 'Gastos por categoria' })
       const rows = within(list).getAllByRole('listitem')
-      expect(rows).toHaveLength(2)
-      expect(rows[0]).toHaveTextContent('Viagens')
-      expect(rows[0]).toHaveTextContent('−R$ 60,00 (−100,0%)')
-      expect(rows[1]).toHaveTextContent('Restaurantes')
-      expect(rows[1]).toHaveTextContent('+R$ 50,00 (+150,0%)')
+      // The two categories of the period, then the three that only the comparison knows.
+      expect(rows).toHaveLength(5)
+      expect(rows[0]).toHaveTextContent('Moradia')
+      expect(rows[0]).not.toHaveTextContent('Antes:')
+      expect(rows[2]).toHaveTextContent('Viagens')
+      expect(rows[2]).toHaveTextContent('−R$ 60,00 (−100,0%)')
+      expect(rows[2]).toHaveTextContent('Antes: R$ 40,00')
+      expect(rows[3]).toHaveTextContent('Restaurantes')
+      expect(rows[3]).toHaveTextContent('+R$ 50,00 (+150,0%)')
+      expect(rows[4]).toHaveTextContent('Farmácia')
+      expect(rows[4]).toHaveTextContent('Sem variação')
     })
 
     it('keeps the summary when the comparison fails', async () => {
@@ -319,6 +356,127 @@ describe('DashboardPage', () => {
 
       await screen.findByRole('heading', { name: 'Nenhuma transação' })
       expect(requested).toBe(false)
+    })
+  })
+
+  describe('category list', () => {
+    const loaded = [
+      http.get(SUMMARY, () => HttpResponse.json(makeSummary())),
+      http.get(BY_CATEGORY, () => HttpResponse.json(makeByCategory())),
+    ]
+
+    it('links a category to its expenses in the same period', async () => {
+      server.use(...loaded)
+      renderApp(`/${SEPTEMBER}`)
+
+      const list = await screen.findByRole('list', { name: 'Gastos por categoria' })
+      expect(within(list).getByRole('link', { name: /Moradia/ })).toHaveAttribute(
+        'href',
+        '/transactions?start=2026-09-01&end=2026-09-30&category=11111111-1111-4111-8111-111111111111&type=debit',
+      )
+      // "Sem categoria" has no filter to link to.
+      expect(within(list).queryByRole('link', { name: /Sem categoria/ })).not.toBeInTheDocument()
+    })
+
+    it('still lists the categories when the comparison fails', async () => {
+      server.use(...loaded, http.get(COMPARISON, () => new HttpResponse(null, { status: 422 })))
+      renderApp(`/${SEPTEMBER}`)
+
+      const list = await screen.findByRole('list', { name: 'Gastos por categoria' })
+      expect(within(list).getAllByRole('listitem')).toHaveLength(2)
+      expect(within(list).getByText('R$ 2.200,00')).toBeInTheDocument()
+    })
+  })
+
+  describe('rule-based insights', () => {
+    const loaded = [
+      http.get(SUMMARY, () => HttpResponse.json(makeSummary())),
+      http.get(BY_CATEGORY, () => HttpResponse.json(makeByCategory())),
+    ]
+    const insight = (overrides: object) => ({
+      kind: 'spending_change',
+      category_id: null,
+      category: null,
+      current: '3649.94',
+      previous: '2800.00',
+      change: '849.94',
+      percent_change: '30.4',
+      direction: 'up',
+      ...overrides,
+    })
+
+    it('says what changed in sentences built from the backend values', async () => {
+      const moradia = {
+        category_id: '11111111-1111-4111-8111-111111111111',
+        category: 'Moradia',
+        current: '2200.00',
+        previous: '2900.00',
+        change: '-700.00',
+        percent_change: '-24.1',
+        direction: 'down',
+      }
+      server.use(
+        ...loaded,
+        http.get(INSIGHTS, () =>
+          HttpResponse.json({
+            ...noInsights,
+            items: [
+              insight({}),
+              insight({ kind: 'largest_category_change', ...moradia }),
+              insight({ kind: 'category_decrease', ...moradia }),
+            ],
+          }),
+        ),
+      )
+      renderApp(`/${SEPTEMBER}`)
+
+      const section = await screen.findByRole('region', { name: 'O que mudou' })
+      const items = within(section).getAllByRole('listitem')
+      // The largest mover is the same category as the decrease: it is said once.
+      expect(items).toHaveLength(2)
+      expect(items[0]).toHaveTextContent(
+        'Os gastos subiram R$ 849,94 (30,4%), de R$ 2.800,00 para R$ 3.649,94.',
+      )
+      expect(items[1]).toHaveTextContent(
+        'Moradia caiu R$ 700,00 (24,1%), de R$ 2.900,00 para R$ 2.200,00.',
+      )
+      expect(within(section).getByText(/sem IA/)).toBeInTheDocument()
+    })
+
+    it('shows nothing when no rule fired', async () => {
+      server.use(...loaded)
+      renderApp(`/${SEPTEMBER}`)
+
+      await screen.findByRole('list', { name: 'Totais comparados' })
+      expect(screen.queryByRole('region', { name: 'O que mudou' })).not.toBeInTheDocument()
+    })
+  })
+
+  describe('side column', () => {
+    const loaded = [
+      http.get(SUMMARY, () => HttpResponse.json(makeSummary())),
+      http.get(BY_CATEGORY, () => HttpResponse.json(makeByCategory())),
+    ]
+
+    it('lists the latest transactions of the period', async () => {
+      let query: URLSearchParams | undefined
+      server.use(
+        ...loaded,
+        http.get(TRANSACTIONS, ({ request }) => {
+          query = new URL(request.url).searchParams
+          return HttpResponse.json(makePage([makeTransaction()]))
+        }),
+      )
+      renderApp(`/${SEPTEMBER}`)
+
+      expect(await screen.findByRole('heading', { name: 'Últimas transações' })).toBeInTheDocument()
+      expect(screen.getByText('Uber')).toBeInTheDocument()
+      expect(query?.get('limit')).toBe('5')
+      expect(query?.get('start_date')).toBe('2026-09-01')
+      expect(screen.getByRole('link', { name: 'Ver todas' })).toHaveAttribute(
+        'href',
+        `/transactions${SEPTEMBER}`,
+      )
     })
   })
 
@@ -371,7 +529,7 @@ describe('DashboardPage', () => {
       expect(asOf).toBe('2026-10-10')
       expect(screen.getByText('Gasto projetado até 31/10/2026')).toBeInTheDocument()
       expect(screen.getByText(/É uma estimativa, não um valor garantido/)).toHaveTextContent(
-        'média diária dos 10 dia(s) já decorridos nos 21 dia(s) restantes',
+        'média diária dos 10 dias já decorridos nos 21 dias restantes',
       )
       for (const [label, value] of [
         ['Gasto até 10/10/2026', 'R$ 1.900,00'],

@@ -8,7 +8,7 @@ interface EmptyStateProps {
 
 export function EmptyState({
   title = 'Nenhuma transação',
-  message = 'Não há transações neste período. Escolha outro período.',
+  message = 'Não há transações neste período. Escolha outro período ou sincronize suas contas.',
   children,
 }: EmptyStateProps) {
   return (

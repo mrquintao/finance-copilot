@@ -15,7 +15,7 @@ const restricted = [
   },
   {
     selector: "CallExpression[callee.name=/^(Number|parseFloat)$/]",
-    message: 'Money stays a decimal string; only CategoryChart may convert it for the scale.',
+    message: 'Money stays a decimal string; only src/lib/barScale.ts may convert it, to size a bar.',
   },
 ]
 
@@ -33,7 +33,7 @@ export default tseslint.config(
     rules: { 'no-restricted-syntax': ['error', ...restricted] },
   },
   {
-    files: ['src/components/CategoryChart.tsx'],
+    files: ['src/lib/barScale.ts'],
     rules: { 'no-restricted-syntax': ['error', ...restricted.slice(0, 2)] },
   },
 )

@@ -5,6 +5,7 @@ import { queryKeys } from '../api/queryKeys'
 import { createConnectToken, listSyncRuns, refreshConnections, syncItem } from '../api/sync'
 import type { SyncRun, SyncStatus } from '../api/types'
 import { Button } from '../components/Button'
+import { AccountsTabs } from '../components/AccountsTabs'
 import { PageHeader } from '../components/PageHeader'
 import { SectionHeading } from '../components/SectionHeading'
 import { Spinner } from '../components/Spinner'
@@ -133,6 +134,7 @@ export function ConnectionsPage() {
   return (
     <div className="max-w-3xl">
       <PageHeader title="Conexões" />
+      <AccountsTabs />
       <section>
         <h2 className="text-base font-semibold">MeuPluggy</h2>
         <p className="mt-1 max-w-xl text-sm text-ink-soft">
@@ -166,7 +168,7 @@ export function ConnectionsPage() {
         <div
           role="group"
           aria-label="Filtrar histórico"
-          className="mt-4 inline-flex gap-px overflow-hidden rounded-ctl border border-line-strong bg-line-strong"
+          className="mt-4 flex flex-wrap gap-2"
         >
           {HISTORY_FILTERS.map((option) => {
             const active = statusFilter === option.status
@@ -176,10 +178,10 @@ export function ConnectionsPage() {
                 type="button"
                 aria-pressed={active}
                 onClick={() => setStatusFilter(option.status)}
-                className={`min-h-10 px-3 text-[0.8125rem] transition-colors ${
+                className={`min-h-11 rounded-ctl border px-4 text-sm font-semibold transition-colors ${
                   active
-                    ? 'bg-brand-soft font-semibold text-accent'
-                    : 'bg-raised font-medium text-ink-soft hover:text-ink'
+                    ? 'border-brand bg-brand text-on-brand'
+                    : 'border-edge bg-raised text-ink hover:bg-surface'
                 }`}
               >
                 {option.label}

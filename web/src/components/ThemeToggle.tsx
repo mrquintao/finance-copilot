@@ -23,7 +23,7 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
       aria-label={label}
       title={label}
       onClick={toggleTheme}
-      className={`inline-flex size-10 items-center justify-center rounded-ctl text-ink-soft transition-colors hover:bg-surface hover:text-ink active:bg-brand-soft ${className}`}
+      className={`inline-flex size-11 items-center justify-center rounded-ctl text-ink-soft transition-colors hover:bg-surface hover:text-ink active:bg-brand-soft ${className}`}
     >
       {theme === 'dark' ? (
         <svg {...icon} data-icon="moon">
