@@ -18,7 +18,7 @@
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-local-000000?logo=ollama&logoColor=white)
 
-<img src="docs/screenshots/hero.png" alt="Painel de resumo no desktop e a tela do Copilot no celular" width="100%">
+<img src="docs/screenshots/hero.png" alt="Resumo no desktop e o chat do Copilot no celular" width="100%">
 
 </div>
 
@@ -35,41 +35,42 @@ A decisão central do projeto é que **o modelo de linguagem nunca calcula dinhe
 | Área | O que faz |
 | --- | --- |
 | 🏦 **Open Finance** | Conexão pelo widget Pluggy Connect (conta MeuPluggy), importação paginada de contas e transações, deduplicação por id externo e histórico de sincronizações com falhas classificadas. |
-| 📊 **Resumo** | Gastos, receitas e gastos por categoria em qualquer período, comparação com o período anterior equivalente e projeção do gasto até o fim do mês. |
-| 🔎 **Transações** | Lista paginada com busca por descrição ou estabelecimento e filtros por conta, categoria e tipo. O período e os filtros ficam na URL. |
+| 📊 **Resumo** | Gasto do mês com a procedência do cálculo, receitas, categorias comparadas com o período anterior na mesma escala, observações por regras fixas e projeção do gasto até o fim do mês. A navegação é mês a mês, com outros intervalos a um clique. |
+| 🔎 **Transações** | Lista paginada com busca por descrição ou estabelecimento e filtros por conta, categoria e tipo. O período e os filtros ficam na URL, e cada categoria do Resumo leva à lista já filtrada. |
 | 🧾 **Contas** | Visão consolidada por instituição, com estado da última sincronização e contagem de transações. |
 | 💬 **Copilot** | Perguntas em linguagem natural, respostas com o período considerado, a fonte de cada cálculo e links para as transações que sustentam a resposta. |
+| 🦆 **Chat flutuante** | O pato no canto inferior direito abre a conversa com o Copilot em qualquer tela, usando o mesmo backend da tela Copilot. A conversa fica só na memória do navegador: continua ao trocar de tela e some ao recarregar a página. |
 | 💡 **Insights e auditoria** | Insights por regras fixas (sem LLM) e um relatório de qualidade dos dados, somente leitura, que aponta duplicatas, lacunas de sincronização e valores suspeitos. |
 | 🌓 **Web e PWA** | Interface responsiva com tema claro e escuro, instalável no iPhone pela tela de início. |
 
 ## Telas
 
-Todas as telas abaixo usam o dataset de demonstração, que tem dados fictícios.
+Todas as telas abaixo usam dados fictícios, servidos por uma API simulada só para as capturas.
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/dashboard-desktop.png" alt="Resumo do mês com gastos por categoria e comparação com o período anterior"><br><sub><b>Resumo</b>: gastos por categoria e comparação com o mês anterior</sub></td>
-    <td width="50%"><img src="docs/screenshots/copilot-desktop.png" alt="Copilot respondendo uma pergunta com os dados calculados abaixo"><br><sub><b>Copilot</b>: texto do modelo separado dos dados calculados pelo app</sub></td>
+    <td width="50%"><img src="docs/screenshots/dashboard-desktop.png" alt="Resumo do mês: gasto total, totais comparados, gastos por categoria e últimas transações"><br><sub><b>Resumo</b>: gasto do mês com a procedência do cálculo, categorias comparadas com o mês anterior na mesma escala</sub></td>
+    <td width="50%"><img src="docs/screenshots/chat-desktop.png" alt="Chat flutuante do Copilot aberto sobre o Resumo, com uma resposta e os dados calculados"><br><sub><b>Chat flutuante</b>: o pato abre a conversa com o Copilot em qualquer tela</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/transactions-desktop.png" alt="Lista de transações com busca e filtros"><br><sub><b>Transações</b>: busca, filtros e paginação</sub></td>
+    <td><img src="docs/screenshots/copilot-desktop.png" alt="Tela do Copilot com o texto do modelo separado dos dados calculados"><br><sub><b>Copilot</b>: texto do modelo separado dos dados calculados pelo app</sub></td>
+    <td><img src="docs/screenshots/transactions-desktop.png" alt="Lista de transações com navegação por mês, busca e filtros"><br><sub><b>Transações</b>: navegação por mês, busca, filtros e paginação</sub></td>
+  </tr>
+  <tr>
     <td><img src="docs/screenshots/transaction-detail-desktop.png" alt="Detalhe de uma transação"><br><sub><b>Detalhe</b>: cada transação tem rota própria</sub></td>
-  </tr>
-  <tr>
     <td><img src="docs/screenshots/accounts-desktop.png" alt="Contas agrupadas por instituição"><br><sub><b>Contas</b>: agrupadas por instituição</sub></td>
-    <td><img src="docs/screenshots/connections-desktop.png" alt="Tela de conexões Open Finance"><br><sub><b>Conexões</b>: conectar instituição e sincronizar de novo</sub></td>
   </tr>
   <tr>
+    <td><img src="docs/screenshots/connections-desktop.png" alt="Conexão e sincronização com o Open Finance"><br><sub><b>Conexão e sincronização</b>: conectar instituição e sincronizar de novo</sub></td>
     <td><img src="docs/screenshots/dashboard-desktop-dark.png" alt="Resumo no tema escuro"><br><sub><b>Tema escuro</b>: segue o sistema ou a escolha do usuário</sub></td>
-    <td><img src="docs/screenshots/copilot-desktop-dark.png" alt="Copilot no tema escuro"><br><sub><b>Copilot</b> no tema escuro</sub></td>
   </tr>
 </table>
 
 <p align="center">
   <img src="docs/screenshots/dashboard-mobile.png" alt="Resumo no celular" width="23%">
   <img src="docs/screenshots/transactions-mobile.png" alt="Transações no celular" width="23%">
-  <img src="docs/screenshots/accounts-mobile.png" alt="Contas no celular" width="23%">
-  <img src="docs/screenshots/copilot-mobile.png" alt="Copilot no celular" width="23%">
+  <img src="docs/screenshots/chat-mobile.png" alt="Chat do Copilot no celular" width="23%">
+  <img src="docs/screenshots/copilot-mobile.png" alt="Tela do Copilot no celular" width="23%">
 </p>
 
 ## Arquitetura
@@ -103,7 +104,7 @@ flowchart LR
 | --- | --- |
 | Backend | Python 3.12, FastAPI, Pydantic 2, SQLAlchemy 2, Alembic, httpx |
 | Banco | PostgreSQL 18, dinheiro em `NUMERIC(18,2)` |
-| Web | React 19, TypeScript strict, Vite, React Router, TanStack Query, Recharts, Tailwind CSS |
+| Web | React 19, TypeScript strict, Vite, React Router, TanStack Query, Tailwind CSS, fontes Red Hat servidas pelo próprio app |
 | IA | Ollama (padrão, local) ou API da Anthropic, atrás de uma interface `LLMProvider` |
 | Qualidade | pytest, Ruff, Vitest, Testing Library, MSW, ESLint, GitHub Actions |
 
@@ -134,7 +135,7 @@ sequenceDiagram
 - **Fato separado de interpretação.** Na tela, o texto do modelo e os dados calculados aparecem separados e rotulados.
 - **Tolerante a modelos pequenos.** O período é passado como uma string simples (`"2026-09"`, `"2025"`, `"previous_month"`, `"2026-03-01..2026-03-15"`), e valores de preenchimento como `""` ou `"None"` em campos opcionais são tratados como ausentes.
 - **O que vai para o modelo:** a pergunta, a data e os resultados das ferramentas chamadas. Nunca vão credenciais, tokens, ids da Pluggy ou nomes de contas e instituições. Perguntas, respostas e resultados não são registrados em log.
-- **Limites:** uma pergunta por requisição, sem histórico de conversa, e no máximo 6 rodadas do modelo por pergunta.
+- **Limites:** uma pergunta por requisição, sem histórico de conversa, e no máximo 6 rodadas do modelo por pergunta. O chat flutuante mostra as perguntas em sequência, mas cada uma é respondida de forma independente: o modelo não vê as anteriores.
 
 ## Rodando localmente
 
@@ -162,7 +163,7 @@ npm run dev                   # http://localhost:5173
 ollama pull llama3.1:8b
 ```
 
-O dataset de demonstração cobre abril a setembro de 2026. Para vê-lo, escolha **Personalizado** nesse intervalo.
+O dataset de demonstração cobre abril a setembro de 2026. Para vê-lo, volte mês a mês com o navegador de mês do cabeçalho ou abra **Outro período** e informe esse intervalo.
 
 Para subir tudo em containers: `docker compose up -d --build`. Os dados ficam no volume `postgres_data` e sobrevivem a `docker compose down`. Já `docker compose down -v` apaga o volume e todos os dados financeiros junto.
 
@@ -274,7 +275,7 @@ Detalhes:
 
 - Dinheiro é `Decimal` no Python, `NUMERIC(18,2)` no banco e string com duas casas no JSON. Nunca `float`.
 - `amount` é sempre não negativo. `debit` é despesa, `credit` é receita e `transfer` é movimentação interna, que não entra em gastos nem em receitas.
-- O cliente web formata dinheiro em BRL sem converter para `number`. A única conversão fica no gráfico, só para a escala.
+- O cliente web formata dinheiro em BRL sem converter para `number`. A única conversão fica em `web/src/lib/barScale.ts`, só para dimensionar barras; o resultado nunca é exibido nem somado.
 - A projeção do mês é uma estimativa. O gasto variável até a data é extrapolado pela média diária, e os gastos recorrentes entram pelo valor real. A resposta traz as premissas e os dias decorridos.
 - Um insight só é gerado para variações de pelo menos R$ 50,00 e, quando há valor anterior, de pelo menos 20%.
 

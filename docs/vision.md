@@ -166,7 +166,7 @@ Objetivo:
 
 ## MVP 0.6 — Insights proativos
 
-Entregue: endpoint `GET /analytics/insights`, com regras determinísticas sobre a comparação de períodos (sem LLM). Falta a exibição no cliente web.
+Entregue: endpoint `GET /analytics/insights`, com regras determinísticas sobre a comparação de períodos (sem LLM). O cliente web mostra até três deles no Resumo, em frases montadas a partir dos valores do backend.
 
 Possíveis exemplos:
 
@@ -185,7 +185,7 @@ A aplicação seguirá inicialmente um modelo de **monólito modular**.
 ```text
                          ┌──────────────────┐
                          │  Navegador / PWA │
-                         │ React + Recharts │
+                         │ React + Tailwind │
                          └────────┬─────────┘
                                   │
                                 HTTPS
@@ -229,7 +229,6 @@ A aplicação seguirá inicialmente um modelo de **monólito modular**.
 - Vite
 - React Router
 - TanStack Query
-- Recharts
 - Tailwind CSS
 - ESLint
 - Vitest / Testing Library / MSW

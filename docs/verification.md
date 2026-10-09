@@ -84,8 +84,8 @@ npm run build
 
 Roteiro manual, com a API no ar e o dataset de demonstração aplicado num banco sem dados reais (`npm run dev` e `http://localhost:5173`):
 
-1. **Resumo:** selecione **Personalizado** de 01/09/2026 a 30/09/2026. Devem aparecer gastos de **R$ 3.649,94**, receitas de **R$ 8.150,00**, 21 transações e o gráfico por categoria com a lista de valores exatos abaixo.
-2. **Período:** passe por **Mês atual**, **Mês anterior** e **Últimos 3 meses** e confira as datas exibidas e a URL (`?period=…`). Um intervalo personalizado invertido deve bloquear o botão **Aplicar**.
+1. **Resumo:** volte com **Mês anterior** até **Setembro de 2026**. Devem aparecer gastos de **R$ 3.649,94** com a faixa de procedência logo abaixo (soma dos débitos, período e número de despesas), receitas de **R$ 8.150,00**, 21 transações e a lista única de categorias: barra sólida do período, barra hachurada do período anterior na mesma escala, valor exato e variação. Clicar numa categoria abre Transações já filtrada por ela.
+2. **Período:** use as setas **Mês anterior** e **Próximo mês** e confira o nome do mês e a URL (`?period=…` para o mês atual e o anterior, `?start=…&end=…` para os demais). **Próximo mês** fica desabilitado no mês atual e **Mês atual** volta a ele num clique. Em **Outro período**, **Últimos 3 meses** e um intervalo com datas ficam disponíveis; um intervalo invertido deve bloquear o botão **Aplicar**.
 3. **Transações:** com 01/04/2026 a 30/09/2026, a lista mostra "126 transações" e **Carregar mais** leva a 50, 100 e 126 linhas, sem repetição. Abra uma transação, copie a URL e abra-a em outra aba: o detalhe carrega direto.
 4. **Vazio:** escolha um período sem dados (por exemplo, janeiro de 2020) em Resumo e em Transações.
 5. **Erro:** pare o backend e recarregue: cada tela mostra o erro com **Tentar novamente**. Suba o backend e use o botão.
@@ -124,3 +124,12 @@ Requer `PLUGGY_CLIENT_ID` e `PLUGGY_CLIENT_SECRET` no `.env` do backend e uma co
 - O fluxo real do Pluggy Connect não é automatizado: nos testes o widget é mockado, e a conexão com uma instituição só é conferida manualmente.
 - O web ainda não tem service worker: não funciona offline.
 - A paginação usa offset, o que é adequado ao volume atual. Se o banco mudar durante a navegação, recarregue a lista.
+
+## Chat flutuante do Copilot
+
+1. Em qualquer tela, menos a do Copilot, o pato aparece no canto inferior direito (acima da barra de abas no celular). Com o teclado, ele recebe foco e abre com Enter.
+2. Clique no pato: o painel sobe com o cabeçalho "Finance Copilot / Seu assistente financeiro" e o cursor vai para o campo de mensagem. A linha acima do campo diz para onde a pergunta e os dados vão (modelo local ou serviço externo).
+3. Envie "Quanto gastei no mês passado?" com Enter (Shift+Enter quebra a linha). Enquanto a resposta é gerada aparece "Consultando seus dados…" e o botão vira **Cancelar**. A resposta vem à esquerda, ao lado do pato, com "Dados calculados pelo aplicativo" recolhido logo abaixo.
+4. Recolha o painel, vá para outra tela e abra de novo: a conversa continua lá. Recarregue a página: a conversa some, porque nada é gravado no navegador.
+5. Com o backend sem Copilot configurado, o painel avisa e o campo fica desabilitado. Com o Ollama fechado, a mensagem de erro aparece na conversa com **Tentar novamente**.
+6. No celular o painel ocupa quase toda a tela; ao abrir o teclado, o campo de mensagem deve continuar visível. Tocar fora do painel ou na seta do cabeçalho recolhe.
