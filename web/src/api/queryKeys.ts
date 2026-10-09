@@ -7,10 +7,13 @@ export const queryKeys = {
   summary: (period: Period) => ['analytics', 'summary', period.start, period.end] as const,
   byCategory: (period: Period) => ['analytics', 'by-category', period.start, period.end] as const,
   comparison: (period: Period) => ['analytics', 'comparison', period.start, period.end] as const,
+  insights: (period: Period) => ['analytics', 'insights', period.start, period.end] as const,
   projection: (asOf: string) => ['analytics', 'projection', asOf] as const,
   // Filters are part of the key for the same reason as the period.
   transactions: (period: Period, filters: TransactionFilters) =>
     ['transactions', 'list', period.start, period.end, filters] as const,
+  recentTransactions: (period: Period) =>
+    ['transactions', 'recent', period.start, period.end] as const,
   transaction: (id: string) => ['transactions', 'detail', id] as const,
   syncRuns: (status: string | null) => ['sync', 'runs', status ?? 'all'] as const,
   accounts: () => ['accounts'] as const,

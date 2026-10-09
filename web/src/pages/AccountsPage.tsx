@@ -4,6 +4,7 @@ import { listAccounts } from '../api/accounts'
 import { errorMessage } from '../api/client'
 import { queryKeys } from '../api/queryKeys'
 import type { AccountSummary, ConnectionState } from '../api/types'
+import { AccountsTabs } from '../components/AccountsTabs'
 import { PageHeader } from '../components/PageHeader'
 import { SectionHeading } from '../components/SectionHeading'
 import { EmptyState } from '../components/states/EmptyState'
@@ -34,6 +35,7 @@ export function AccountsPage() {
   return (
     <div className="max-w-3xl">
       <PageHeader title="Contas" />
+      <AccountsTabs />
       {!query.data && query.isError ? (
         <ErrorState message={errorMessage(query.error)} onRetry={() => void query.refetch()} />
       ) : !query.data ? (
@@ -85,8 +87,8 @@ function AccountRow({ account }: { account: AccountSummary }) {
   return (
     <li className="grid gap-x-6 gap-y-1 border-b border-line py-3 sm:grid-cols-[1fr_auto]">
       <div className="min-w-0">
-        <p className="truncate text-[0.9375rem] font-medium">{account.name}</p>
-        <p className="mt-0.5 text-[0.8125rem] text-ink-soft tabular-nums">{details.join(' • ')}</p>
+        <p className="truncate text-base font-medium">{account.name}</p>
+        <p className="mt-0.5 text-sm text-ink-soft tabular-nums">{details.join(' • ')}</p>
       </div>
       <div className="sm:text-right">
         <p className={`flex items-center gap-2 text-sm sm:justify-end ${connection.text}`}>
@@ -94,7 +96,7 @@ function AccountRow({ account }: { account: AccountSummary }) {
           {connection.label}
         </p>
         {account.last_successful_sync_at && (
-          <p className="mt-0.5 text-[0.8125rem] text-ink-soft tabular-nums">
+          <p className="mt-0.5 text-sm text-ink-soft tabular-nums">
             Dados de {formatDateTime(account.last_successful_sync_at)}
           </p>
         )}

@@ -1,6 +1,7 @@
 import type { Period } from '../lib/period'
 import { request } from './client'
 import type {
+  InsightList,
   MonthProjection,
   PeriodComparison,
   SpendingByCategory,
@@ -27,4 +28,9 @@ export function getPeriodComparison(period: Period, signal?: AbortSignal): Promi
 /** `asOf` is the user's local date: the backend never guesses "today". */
 export function getMonthProjection(asOf: string, signal?: AbortSignal): Promise<MonthProjection> {
   return request('/analytics/month-projection', { query: { as_of: asOf }, signal })
+}
+
+/** Rule-based observations about the period against the one before it. */
+export function getInsights(period: Period, signal?: AbortSignal): Promise<InsightList> {
+  return request('/analytics/insights', { query: periodQuery(period), signal })
 }

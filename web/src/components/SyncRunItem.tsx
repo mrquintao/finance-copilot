@@ -44,12 +44,12 @@ export function SyncRunItem({ run }: { run: SyncRun }) {
           </div>
         ))}
       </dl>
-      <p className="col-span-full truncate text-[0.8125rem] text-ink-soft">
+      <p className="col-span-full truncate text-sm text-ink-soft">
         {source}
         {duration && <span className="tabular-nums"> • Duração: {duration}</span>}
       </p>
       {run.status === 'failed' && (
-        <p className="col-span-full text-[0.8125rem] break-words text-danger">
+        <p className="col-span-full text-sm break-words text-danger">
           <span className="block font-semibold">
             {ERROR_KIND[run.error_kind ?? 'unknown'] ?? ERROR_KIND.unknown}
           </span>

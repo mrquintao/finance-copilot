@@ -5,7 +5,7 @@ export type Theme = 'light' | 'dark'
 
 export const THEME_STORAGE_KEY = 'finance-copilot:theme'
 
-const CANVAS: Record<Theme, string> = { light: '#f4f2ed', dark: '#1a1917' }
+const CANVAS: Record<Theme, string> = { light: '#f6f8f7', dark: '#0c1a1d' }
 const DARK_QUERY = '(prefers-color-scheme: dark)'
 
 function isTheme(value: unknown): value is Theme {

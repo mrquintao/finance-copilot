@@ -10,6 +10,7 @@ export function listTransactions(
   filters: TransactionFilters,
   offset: number,
   signal?: AbortSignal,
+  limit: number = PAGE_SIZE,
 ): Promise<TransactionPage> {
   return request('/transactions', {
     query: {
@@ -20,7 +21,7 @@ export function listTransactions(
       account_id: filters.accountId || undefined,
       category_id: filters.categoryId || undefined,
       type: filters.type || undefined,
-      limit: PAGE_SIZE,
+      limit,
       offset,
     },
     signal,

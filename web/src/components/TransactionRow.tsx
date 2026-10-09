@@ -22,20 +22,20 @@ export function TransactionRow({ transaction }: { transaction: Transaction }) {
         className="-mx-4 flex items-baseline justify-between gap-4 px-4 py-3 transition-colors hover:bg-surface active:bg-brand-soft md:-mx-3 md:px-3"
       >
         <span className="min-w-0">
-          <span className="block truncate text-[0.9375rem] font-medium">
+          <span className="block truncate text-base font-medium">
             {transactionTitle(transaction)}
           </span>
-          <span className="mt-0.5 block truncate text-[0.8125rem] text-ink-soft tabular-nums">
+          <span className="mt-0.5 block truncate text-sm text-ink-soft tabular-nums">
             {formatLocalDate(transaction.date)} • {categoryName(transaction)}
           </span>
         </span>
         <span className="shrink-0 text-right">
           <span
-            className={`block text-[0.9375rem] font-semibold tabular-nums ${AMOUNT_TONE[transaction.type]}`}
+            className={`money block text-base font-extrabold ${AMOUNT_TONE[transaction.type]}`}
           >
             {formatBRL(transaction.amount)}
           </span>
-          <span className="mt-0.5 block text-[0.8125rem] text-ink-soft">
+          <span className="mt-0.5 block text-sm text-ink-soft">
             {TYPE_LABELS[transaction.type]}
           </span>
         </span>

@@ -1,94 +1,47 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
-import { errorMessage, hasStatus } from '../api/client'
 import { askCopilot, getCopilotStatus } from '../api/copilot'
 import { queryKeys } from '../api/queryKeys'
-import type {
-  CopilotAnswer,
-  CopilotEvidence,
-  CopilotStatus,
-  CopilotStatusInfo,
-  DateRange,
-} from '../api/types'
+import type { CopilotAnswer } from '../api/types'
 import { Button } from '../components/Button'
+import { Evidence } from '../components/copilot/Evidence'
+import { Markdown } from '../components/copilot/Markdown'
 import { PageHeader } from '../components/PageHeader'
 import { SectionHeading } from '../components/SectionHeading'
 import { LoadingState } from '../components/states/LoadingState'
-import { formatFact, transactionsHref } from '../lib/copilot'
-import { formatLocalDate, today } from '../lib/localDate'
-import { formatBRL } from '../lib/money'
-import { TYPE_LABELS } from '../lib/transaction'
+import {
+  ANSWER_STATUS,
+  copilotDestination,
+  copilotFailure,
+  COPILOT_EXAMPLES,
+  COPILOT_MAX_LENGTH,
+  dateRange,
+} from '../lib/copilot'
+import { today } from '../lib/localDate'
 
-const MAX_LENGTH = 500
-const EXAMPLES = [
-  'Quanto gastei no mês passado?',
-  'Em quais categorias gastei mais neste mês?',
-  'Gastei mais ou menos que no mês anterior?',
-]
+const MAX_LENGTH = COPILOT_MAX_LENGTH
+const EXAMPLES = COPILOT_EXAMPLES
 
 const link = 'font-medium text-accent underline-offset-4 hover:underline'
-
-function range(period: DateRange): string {
-  return `${formatLocalDate(period.start_date)} – ${formatLocalDate(period.end_date)}`
-}
-
-// Where the question and the queried data go. Shown before the user asks anything.
-function destination(info: CopilotStatusInfo | undefined): string | null {
-  if (!info) return null
-  if (!info.configured) return 'O Copilot não está configurado no backend.'
-  if (info.provider === 'ollama' && info.local) {
-    return `A pergunta e os dados consultados são processados neste computador, pelo Ollama (${info.model}). Nada é enviado para fora.`
-  }
-  if (info.provider === 'ollama') {
-    return `A pergunta e os dados consultados são enviados ao Ollama em outro computador da rede (${info.model}).`
-  }
-  return `A pergunta e os dados consultados são enviados à API da Anthropic (${info.model}).`
-}
-
-function failure(error: unknown, info: CopilotStatusInfo | undefined): string {
-  const ollama = info?.provider === 'ollama'
-  if (hasStatus(error, 503)) {
-    return ollama
-      ? `O modelo ${info.model} não está instalado no Ollama ou não aceita ferramentas. Rode "ollama pull ${info.model}" e tente de novo.`
-      : 'O Copilot não está configurado no backend (COPILOT_PROVIDER e, para a Anthropic, ANTHROPIC_API_KEY).'
-  }
-  if (hasStatus(error, 502)) {
-    return ollama
-      ? 'O Ollama não respondeu. Confira se ele está aberto e tente novamente; seus dados não foram afetados.'
-      : 'O modelo de IA não respondeu. Seus dados não foram afetados; tente novamente.'
-  }
-  return errorMessage(error)
-}
-
-// How the model's text is to be read, for each outcome. Only "answered" is a checked answer.
-const STATUS: Record<CopilotStatus, { heading: string; tone: string; note: string | null }> = {
-  answered: {
-    heading: 'Texto do Copilot',
-    tone: 'border-line-strong',
-    note: 'Redação e interpretação do modelo de IA, não um cálculo. Todo valor em reais deste texto foi conferido com os dados calculados abaixo.',
-  },
-  ungrounded: { heading: 'Resposta retida', tone: 'border-warning', note: null },
-  refused: { heading: 'Sem resposta', tone: 'border-line-strong', note: null },
-  incomplete: { heading: 'Sem resposta', tone: 'border-line-strong', note: null },
-}
 
 export function CopilotPage() {
   const [question, setQuestion] = useState('')
   const [asked, setAsked] = useState('')
-  const ask = useMutation({ mutationFn: (text: string) => askCopilot(text, today()) })
+  const { mutate, ...ask } = useMutation({
+    mutationFn: (text: string) => askCopilot(text, today()),
+  })
   const status = useQuery({
     queryKey: queryKeys.copilotStatus(),
     queryFn: ({ signal }) => getCopilotStatus(signal),
   })
-  const note = destination(status.data)
+  const note = copilotDestination(status.data)
   const text = question.trim()
 
   function submit(event: FormEvent) {
     event.preventDefault()
     if (!text || ask.isPending) return
     setAsked(text)
-    ask.mutate(text)
+    mutate(text)
   }
 
   return (
@@ -105,7 +58,7 @@ export function CopilotPage() {
           <textarea
             rows={2}
             maxLength={MAX_LENGTH}
-            className="mt-1 block w-full rounded-ctl border border-line-strong bg-raised px-3 py-2.5 text-base"
+            className="mt-1 block w-full rounded-ctl border border-edge bg-raised px-3 py-2.5 text-base"
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
           />
@@ -144,8 +97,8 @@ export function CopilotPage() {
         ) : ask.isError ? (
           <div role="alert" className="border-l-2 border-danger pl-4">
             <p className="text-sm font-semibold text-danger">O Copilot não respondeu</p>
-            <p className="mt-1 max-w-md text-sm">{failure(ask.error, status.data)}</p>
-            <Button variant="secondary" className="mt-4" onClick={() => ask.mutate(asked)}>
+            <p className="mt-1 max-w-md text-sm">{copilotFailure(ask.error, status.data)}</p>
+            <Button variant="secondary" className="mt-4" onClick={() => mutate(asked)}>
               Tentar novamente
             </Button>
           </div>
@@ -158,15 +111,17 @@ export function CopilotPage() {
 }
 
 function Answer({ question, answer }: { question: string; answer: CopilotAnswer }) {
-  const status = STATUS[answer.status] ?? STATUS.incomplete
+  const status = ANSWER_STATUS[answer.status] ?? ANSWER_STATUS.incomplete
 
   return (
     <>
       <section aria-label="Resposta">
         <p className="text-sm text-ink-soft">Você perguntou: {question}</p>
         <div className={`mt-3 border-l-2 pl-4 ${status.tone}`}>
-          <h2 className="label-caps">{status.heading}</h2>
-          <p className="mt-2 text-[0.9375rem] whitespace-pre-line">{answer.answer}</p>
+          <h2 className="section-label">{status.heading}</h2>
+          <div className="mt-2 text-base">
+            <Markdown text={answer.answer} />
+          </div>
           {status.note && <p className="mt-2 text-xs text-ink-soft">{status.note}</p>}
         </div>
         {answer.no_data && (
@@ -176,11 +131,11 @@ function Answer({ question, answer }: { question: string; answer: CopilotAnswer 
         )}
         {answer.periods.length > 0 && (
           <p className="mt-4 text-sm text-ink-soft">
-            <span className="label-caps mr-2">
+            <span className="section-label mr-2">
               {answer.periods.length === 1 ? 'Período considerado' : 'Períodos considerados'}
             </span>
             <span className="font-medium text-ink tabular-nums">
-              {answer.periods.map(range).join(' • ')}
+              {answer.periods.map(dateRange).join(' • ')}
             </span>
           </p>
         )}
@@ -197,77 +152,5 @@ function Answer({ question, answer }: { question: string; answer: CopilotAnswer 
         )}
       </section>
     </>
-  )
-}
-
-function Evidence({ evidence }: { evidence: CopilotEvidence }) {
-  return (
-    <article className="border-b border-line-strong py-5">
-      <h3 className="text-[0.9375rem] font-semibold">{evidence.title}</h3>
-      <p className="mt-1 text-xs text-ink-soft">Fonte: {evidence.source}</p>
-      {evidence.period && (
-        <p className="mt-1 text-xs text-ink-soft tabular-nums">
-          Período: {range(evidence.period)}
-          {evidence.comparison_period && ` • comparado com ${range(evidence.comparison_period)}`}
-        </p>
-      )}
-
-      {!evidence.has_data ? (
-        <p className="mt-3 text-sm font-medium">Esta consulta não encontrou dados.</p>
-      ) : (
-        <dl className="mt-3">
-          {evidence.facts.map((fact) => (
-            <div
-              key={fact.label}
-              className="flex items-baseline justify-between gap-6 border-t border-line py-2 text-sm"
-            >
-              <dt className="min-w-0">
-                {fact.link ? (
-                  <Link to={transactionsHref(fact.link)} className={link}>
-                    {fact.label}
-                  </Link>
-                ) : (
-                  fact.label
-                )}
-                {fact.detail && <span className="block text-xs text-ink-soft">{fact.detail}</span>}
-              </dt>
-              <dd className="shrink-0 text-right font-medium tabular-nums">{formatFact(fact)}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-
-      {evidence.transactions.length > 0 && (
-        <ul aria-label="Transações que sustentam a resposta" className="mt-3">
-          {evidence.transactions.map((transaction) => (
-            <li key={transaction.id} className="border-t border-line">
-              <Link
-                to={`/transactions/${transaction.id}`}
-                className="flex items-baseline justify-between gap-4 py-2 text-sm hover:bg-surface"
-              >
-                <span className="min-w-0">
-                  <span className="block truncate font-medium">{transaction.title}</span>
-                  <span className="block text-xs text-ink-soft tabular-nums">
-                    {formatLocalDate(transaction.date)} • {TYPE_LABELS[transaction.type]}
-                  </span>
-                </span>
-                <span className="shrink-0 font-medium tabular-nums">
-                  {formatBRL(transaction.amount)}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {evidence.transactions_link && evidence.has_data && (
-        <Link
-          to={transactionsHref(evidence.transactions_link)}
-          className={`mt-3 inline-flex min-h-9 items-center text-sm ${link}`}
-        >
-          Ver as transações desta consulta
-        </Link>
-      )}
-    </article>
   )
 }

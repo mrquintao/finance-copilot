@@ -9,7 +9,7 @@ import { TYPE_LABELS } from '../lib/transaction'
 import { Button } from './Button'
 
 const control =
-  'mt-1 block min-h-11 w-full rounded-ctl border border-line-strong bg-raised px-3 text-base'
+  'mt-1 block min-h-11 w-full rounded-ctl border border-edge bg-raised px-3 text-base'
 const label = 'text-xs font-medium text-ink-soft'
 
 export function TransactionFilters() {

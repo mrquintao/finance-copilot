@@ -229,6 +229,7 @@ describe('TransactionsPage', () => {
       const { user } = renderApp(`/transactions${SEPTEMBER}&type=credit`)
       await screen.findByText('Uber')
 
+      await user.click(screen.getByRole('button', { name: 'Outro período' }))
       await user.click(screen.getByRole('button', { name: 'Últimos 3 meses' }))
       await vi.waitFor(() => expect(requests).toHaveLength(2))
       expect(requests[1]!.type).toBe('credit')
@@ -238,6 +239,7 @@ describe('TransactionsPage', () => {
       await vi.waitFor(() => expect(requests).toHaveLength(3))
       expect(requests[2]!.type).toBeUndefined()
       expect(requests[2]!.start_date).toBe(requests[1]!.start_date)
+      await user.click(screen.getByRole('button', { name: 'Outro período' }))
       expect(screen.getByRole('button', { name: 'Últimos 3 meses' })).toHaveAttribute(
         'aria-pressed',
         'true',
